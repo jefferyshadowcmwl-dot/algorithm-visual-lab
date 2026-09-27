@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>0/1 背包 · 动画精讲</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    min-height: 100vh; padding: 18px; color: #1b5e20;
+  }
+  .container {
+    max-width: 1180px; margin: 0 auto; background: rgba(255,255,255,0.96);
+    border-radius: 16px; box-shadow: 0 8px 32px rgba(20,90,40,0.18); padding: 24px;
+  }
+  h1 { text-align: center; color: #1b5e20; font-size: 25px; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: #2e7d32; font-size: 13.5px; margin-bottom: 18px; }
+
+  .controls { display:flex; gap:9px; justify-content:center; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  button, input, select {
+    padding: 8px 14px; border-radius: 8px; border: 1px solid #a5d6a7;
+    background:#fff; color:#2e7d32; font-size:14px; cursor:pointer; transition: all .18s;
+  }
+  button:hover { background:#81c784; color:#fff; transform: translateY(-1px); }
+  button.primary { background:#43a047; color:#fff; border-color:#2e7d32; }
+  button.primary:hover { background:#2e7d32; }
+  .error { color:#c62828; text-align:center; min-height:20px; margin-bottom:8px; font-size:14px; }
+
+  /* ---------- 物品表 ---------- */
+  .itemwrap { display:flex; justify-content:center; margin-bottom:14px; }
+  table.items { border-collapse: separate; border-spacing: 4px; }
+  table.items th, table.items td {
+    width: 72px; height: 32px; text-align:center; font-size:13.5px; font-weight:700;
+    border-radius: 7px; transition: background .2s, border-color .2s, color .2s;
+  }
+  table.items th { background:#e8f5e9; color:#2e7d32; border:2px solid #a5d6a7; }
+  table.items td { background:#fafafa; border:2px solid #e0e0e0; color:#616161; }
+  table.items tr.cur td { background:#43a047; border-color:#1b5e20; color:#fff; }
+  table.items tr.gone td { background:#eceff1; border-color:#cfd8dc; color:#b0bec5; }
+  table.items tr.taken td { background:#ffd54f; border-color:#ff8f00; color:#e65100; }
+
+  /* ---------- DP 网格 ---------- */
+  .gridwrap { overflow-x:auto; padding: 6px 0 14px; text-align:center; }
+  .grid { display:inline-block; }
+  table.dp { border-collapse: separate; border-spacing: 4px; margin: 0 auto; }
+  table.dp td, table.dp th {
+    width: 40px; height: 34px; text-align:center; font-size:13.5px; font-weight:700;
+    border-radius: 7px;
+  }
+  table.dp th { background:#e8f5e9; color:#2e7d32; border:2px solid #a5d6a7; }
+  table.dp th.corner { background:#fff; border-color:#fff; color:#90a4ae; font-size:12px; }
+  table.dp th.jhi { background:#1e88e5; border-color:#0d47a1; color:#fff; }
+  table.dp th.ihi { background:#43a047; border-color:#1b5e20; color:#fff; }
+  table.dp td { background:#fafafa; border:2px solid #e0e0e0; color:#bdbdbd; }
+  td.border0 { background:#eceff1; border-color:#b0bec5; color:#546e7a; }   /* 第0行：一件都没放 */
+  td.filled  { background:#c8e6c9; border-color:#66bb6a; color:#1b5e20; }   /* 已算好 */
+  td.current { background:#1e88e5; border-color:#0d47a1; color:#fff; transform:scale(1.12);
+               box-shadow:0 0 0 4px rgba(30,136,229,.3); }
+  td.up      { background:#ffe082; border-color:#ffa000; color:#e65100; }   /* 候选：不选它 */
+  td.take    { background:#b3e5fc; border-color:#0288d1; color:#01579b; }   /* 候选：选它 */
+  td.pick    { background:#ff8a65; border-color:#e64a19; color:#fff; transform:scale(1.06); } /* 被采用 */
+  td.path    { background:#ffd54f; border-color:#ff8f00; color:#e65100;
+               box-shadow:0 0 0 3px rgba(255,213,79,.55); }
+  td.infeas  { background:#f5f5f5; border-color:#eeeeee; color:#e0e0e0; }
+
+  /* ---------- 状态条 + 解说 ---------- */
+  .statusbar { display:flex; justify-content:space-between; align-items:center;
+               padding:10px 14px; background:#e8f5e9; border-radius:9px;
+               margin-bottom:12px; font-size:14px; color:#2e7d32; }
+  .answer { font-weight:700; font-size:18px; color:#1b5e20; }
+
+  .explain { background:#fff8e1; border-left:5px solid #ffb300; border-radius:9px; padding:15px 18px; min-height:160px; }
+  .explain-title { font-weight:700; color:#ef6c00; margin-bottom:8px; font-size:15.5px; }
+  .explain-body { line-height:1.85; font-size:14px; color:#37474f; }
+  .explain-body b { color:#c62828; }
+  .explain-body .k { background:#e8f5e9; padding:1px 6px; border-radius:4px; color:#1b5e20; font-family:monospace; }
+  .explain-body .hl { color:#e65100; font-weight:700; }
+  .explain-body .up { color:#e65100; font-weight:700; }
+  .explain-body .take { color:#01579b; font-weight:700; }
+
+  .legend { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:12px; font-size:12.5px; color:#2e7d32; }
+  .legend i { display:inline-block; width:13px; height:13px; border-radius:3px; margin-right:5px; vertical-align:-2px; border:1.5px solid; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>0/1 背包 · 动画精讲</h1>
+  <p class="subtitle">dp[i][j] = 只考虑前 i 件、容量不超过 j 的最大价值 &nbsp;|&nbsp; 每格在<b>不选它</b>和<b>选它</b>之间取大的那个</p>
+
+  <div class="controls">
+    <button class="primary" onclick="loadSample(1)">样例1 (c=4, v=1 3 4)</button>
+    <button onclick="loadSample(2)">样例2 (c=10, v=6 3 5 4 6)</button>
+    <input id="seqInput" type="text" value="12 | 10 20 30 25 | 3 4 5 6" style="width:250px;" placeholder="容量 | 价值列表 | 重量列表">
+    <button class="primary" onclick="loadCustom()">载入自定义</button>
+  </div>
+  <div class="controls">
+    <button onclick="prevStep()">◀ 上一步</button>
+    <button class="primary" onclick="togglePlay()" id="btnPlay">▶ 播放</button>
+    <button onclick="nextStep()">下一步 ▶</button>
+    <button onclick="reset()">↻ 重置</button>
+    <select id="playSpeed" onchange="changeSpeed()">
+      <option value="1500">慢速</option>
+      <option value="800" selected>正常</option>
+      <option value="300">快速</option>
+    </select>
+  </div>
+  <div class="error" id="errorBox"></div>
+
+  <div class="itemwrap"><table class="items" id="itemTable"></table></div>
+
+  <div class="gridwrap"><div class="grid" id="grid"></div></div>
+
+  <div class="statusbar">
+    <span id="stepCounter">步骤 0 / 0</span>
+    <span>当前最大价值：<span class="answer" id="answerBox">—</span></span>
+  </div>
+
+  <div class="explain">
+    <div class="explain-title" id="stepTitle">点上面任一「样例」按钮开始</div>
+    <div class="explain-body" id="stepDetail">
+      这张表怎么读：行是「只考虑前 i 件物品」，列是「背包容量上限 j」。
+      <span class="k">dp[i][j]</span> 表示在这个前提下能装到的最大价值。
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:#eceff1;border-color:#b0bec5"></i>边界(一件都没放)</span>
+    <span><i style="background:#c8e6c9;border-color:#66bb6a"></i>已算好</span>
+    <span><i style="background:#1e88e5;border-color:#0d47a1"></i>正在算</span>
+    <span><i style="background:#ffe082;border-color:#ffa000"></i>候选：不选它 dp[i-1][j]</span>
+    <span><i style="background:#b3e5fc;border-color:#0288d1"></i>候选：选它 dp[i-1][j-w]+v</span>
+    <span><i style="background:#ff8a65;border-color:#e64a19"></i>被采用</span>
+    <span><i style="background:#ffd54f;border-color:#ff8f00"></i>回溯路径 / 最终选中</span>
+  </div>
+</div>
+
+<script>
+/* ============ 状态 ============ */
+var V = [], W = [], CAP = 0;
+var dp = [];          // 完整 DP 表（回溯必须靠它）
+var steps = [];       // 步骤序列
+var stepIdx = 0;
+var playing = false, timer = null, duration = 800;
+
+var SAMPLES = {
+  1: { cap: 4,  values: [1,3,4],       weights: [3,1,4] },
+  2: { cap: 10, values: [6,3,5,4,6],   weights: [2,2,6,5,4] }
+};
+
+/* ============ 完整 DP 表 ============ */
+function computeDp(values, weights, cap) {
+  var n = values.length;
+  var d = [];
+  for (var i = 0; i <= n; i++) {
+    var row = [];
+    for (var j = 0; j <= cap; j++) row.push(0);
+    d.push(row);
+  }
+  for (var i = 1; i <= n; i++) {
+    var w = weights[i - 1], v = values[i - 1];
+    for (var j = 0; j <= cap; j++) {
+      d[i][j] = d[i - 1][j];                       // 不选第 i 件
+      if (j >= w) {                                // 装得下才谈得上选
+        var c = d[i - 1][j - w] + v;
+        if (c > d[i][j]) d[i][j] = c;
+      }
+    }
+  }
+  return d;
+}
+
+/* 回溯：从 (n, cap) 往回走。
+   ⚠️ 必须比 dp 值，不能比物品的原始价值 —— 数字三角形那道题就是栽在这。 */
+function tracePath(values, weights, cap, d) {
+  var n = values.length;
+  var i = n, j = cap;
+  var path = [];
+  while (i > 0) {
+    var taken = (d[i][j] !== d[i - 1][j]);
+    path.push({ i: i, j: j, taken: taken, w: weights[i - 1], v: values[i - 1] });
+    if (taken) j -= weights[i - 1];
+    i--;
+  }
+  /* 保持"走"的顺序（i 从 n 递减）：容量 j 是一路减小的，
+     倒排过来会变成 j 忽大忽小，跟"从 j=c 往回走"这句话自相矛盾 */
+  return { path: path };
+}
+
+/* ============ 步骤序列 ============ */
+function buildSteps(values, weights, cap, d) {
+  var n = values.length;
+  var s = [];
+  s.push({ type: "intro" });
+  s.push({ type: "border" });
+  for (var i = 1; i <= n; i++)
+    for (var j = 0; j <= cap; j++)
+      s.push({ type: "calc", i: i, j: j });
+  s.push({ type: "done" });
+  var tr = tracePath(values, weights, cap, d);
+  for (var t = 0; t < tr.path.length; t++) {
+    var p = tr.path[t];
+    s.push({ type: "trace", i: p.i, j: p.j, taken: p.taken, w: p.w, v: p.v });
+  }
+  s.push({ type: "finished" });
+  return s;
+}
+
+/* ============ 重放到第 k 步，得出每格状态（纯函数，可任意跳转） ============ */
+function stateAt(k) {
+  var n = V.length;
+  var shown = [], cls = [];
+  for (var i = 0; i <= n; i++) {
+    var r1 = [], r2 = [];
+    for (var j = 0; j <= CAP; j++) { r1.push(null); r2.push(""); }
+    shown.push(r1); cls.push(r2);
+  }
+  var pathSet = {}, takenSet = {}, answer = null;
+
+  for (var t = 0; t <= k && t < steps.length; t++) {
+    var st = steps[t];
+    if (st.type === "border") {
+      for (var j = 0; j <= CAP; j++) { cls[0][j] = "border0"; shown[0][j] = 0; }
+    } else if (st.type === "calc") {
+      shown[st.i][st.j] = dp[st.i][st.j];
+      cls[st.i][st.j] = "filled";
+    } else if (st.type === "done") {
+      answer = dp[n][CAP];
+    } else if (st.type === "trace") {
+      pathSet[st.i + "," + st.j] = true;
+      if (st.taken) takenSet[st.i] = true;
+    }
+  }
+
+  var cur = steps[Math.min(k, steps.length - 1)];
+
+  if (cur.type === "calc") {
+    var i = cur.i, j = cur.j, w = W[i - 1], v = V[i - 1];
+    cls[i][j] = "current";
+    shown[i][j] = dp[i][j];
+
+    if (j < w) {
+      /* 装不下：只能不选，来源就是上面那格 */
+      cls[i - 1][j] = "pick";
+    } else {
+      /* 两个候选：不选(dp[i-1][j]) 与 选(dp[i-1][j-w]+v) */
+      var a = dp[i - 1][j], b = dp[i - 1][j - w] + v;
+      cls[i - 1][j] = "up";
+      cls[i - 1][j - w] = "take";
+      if (w === 0) {
+        /* w=0 时 j-w 就是 j，"选它"和"不选它"落在**同一格**。
+           这时来源必然是这一格，直接标 pick（不再区分两个候选）——
+           否则 v<=0 会出现"整步没有任何格子被标成被采用"的空档。 */
+        cls[i - 1][j] = "pick";
+      } else if (b > a) {
+        cls[i - 1][j - w] = "pick";
+      } else {
+        cls[i - 1][j] = "pick";
+      }
+    }
+  }
+
+  for (var key in pathSet) {
+    var p = key.split(",");
+    var pi = parseInt(p[0], 10), pj = parseInt(p[1], 10);
+    if (cls[pi][pj] !== "current") cls[pi][pj] = "path";
+  }
+  /* 回溯时把"现在走到的那一格"单独高亮出来，让往回走的过程看得见 */
+  if (cur.type === "trace") {
+    cls[cur.i][cur.j] = "current";
+    shown[cur.i][cur.j] = dp[cur.i][cur.j];
+  }
+  /* 走到最后一步：把答案正式点亮（前面 done 那步已经点亮过一次） */
+  if (cur.type === "finished") answer = dp[n][CAP];
+
+  return { shown: shown, cls: cls, answer: answer, pathSet: pathSet, takenSet: takenSet };
+}
+
+/* ============ 渲染 ============ */
+function render() {
+  var st = stateAt(stepIdx);
+  var n = V.length;
+  var cur = steps[Math.min(stepIdx, steps.length - 1)];
+
+  /* ---- 物品表 ---- */
+  var it = document.getElementById("itemTable");
+  /* 复用判据：行数必须同时校验（只看一个维度会在换输入时长歪） */
+  if (it.rows.length !== n + 1) {
+    it.innerHTML = "";
+    var hr = it.insertRow();
+    ["物品", "价值 v", "重量 w"].forEach(function (t) {
+      var th = document.createElement("th");
+      th.textContent = t;
+      hr.appendChild(th);
+    });
+    for (var r = 0; r < n; r++) it.insertRow();
+  }
+  for (var r = 0; r < n; r++) {
+    var tr = it.rows[r + 1];
+    for (var c = 0; c < 3; c++) {
+      if (!tr.cells[c]) {
+        var td = document.createElement("td");
+        tr.appendChild(td);
+      }
+    }
+    tr.cells[0].textContent = "第" + (r + 1) + "件";
+    tr.cells[1].textContent = V[r];
+    tr.cells[2].textContent = W[r];
+    var klass = "";
+    if (st.takenSet[r + 1]) klass = "taken";
+    else if (cur.type === "calc" && cur.i === r + 1) klass = "cur";
+    else if (cur.type !== "intro" && cur.type !== "border" && cur.i > r + 1) klass = "gone";
+    tr.className = klass;
+  }
+
+  /* ---- DP 表（增量复用单元格）---- */
+  var grid = document.getElementById("grid");
+  var table = grid.querySelector("table");
+  if (!table || table.rows.length !== n + 2 || table.rows[0].cells.length !== CAP + 2) {
+    grid.innerHTML = "";
+    table = document.createElement("table");
+    table.className = "dp";
+    var head = table.insertRow();
+    var corner = document.createElement("th");
+    corner.className = "corner";
+    corner.textContent = "dp";
+    head.appendChild(corner);
+    for (var j = 0; j <= CAP; j++) {
+      var th = document.createElement("th");
+      th.textContent = j;
+      head.appendChild(th);
+    }
+    for (var i = 0; i <= n; i++) {
+      var row = table.insertRow();
+      var lab = document.createElement("th");
+      lab.textContent = "i=" + i;
+      row.appendChild(lab);
+      for (var j2 = 0; j2 <= CAP; j2++) {
+        var cell = document.createElement("td");
+        row.appendChild(cell);
+      }
+    }
+    grid.appendChild(table);
+  }
+  /* 表头高亮：正在算的容量列 / 正在算的物品行 */
+  for (var j3 = 0; j3 <= CAP; j3++) {
+    table.rows[0].cells[j3 + 1].className =
+      (cur.type === "calc" && cur.j === j3) ? "jhi" : "";
+  }
+  for (var i3 = 0; i3 <= n; i3++) {
+    table.rows[i3 + 1].cells[0].className =
+      (cur.type === "calc" && cur.i === i3) ? "ihi" : "";
+  }
+  for (var i4 = 0; i4 <= n; i4++) {
+    for (var j4 = 0; j4 <= CAP; j4++) {
+      var td2 = table.rows[i4 + 1].cells[j4 + 1];
+      td2.className = st.cls[i4][j4] || "";
+      td2.textContent = (st.shown[i4][j4] === null ? "" : st.shown[i4][j4]);
+    }
+  }
+
+  document.getElementById("stepCounter").textContent =
+    "步骤 " + Math.min(stepIdx + 1, steps.length) + " / " + steps.length;
+  document.getElementById("answerBox").textContent =
+    (st.answer === null ? "—" : st.answer);
+  updateExplain();
+}
+
+/* ============ 解说 ============ */
+function updateExplain() {
+  var st = steps[Math.min(stepIdx, steps.length - 1)];
+  var n = V.length;
+  var T = document.getElementById("stepTitle");
+  var D = document.getElementById("stepDetail");
+  var esc = function (s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  };
+  var k = function (s) { return '<span class="k">' + esc(s) + '</span>'; };
+
+  if (st.type === "intro") {
+    T.textContent = "① 这张表在算什么";
+    D.innerHTML =
+      "行是「<b>只考虑前 i 件物品</b>」，列是「<b>背包容量上限 j</b>」。<br>" +
+      "格子里填 " + k("dp[i][j]") + " = 在这个前提下，能装到的<b>最大总价值</b>。<br>" +
+      "我们要求的就是<b>右下角</b> " + k("dp[" + n + "][" + CAP + "]") + " —— 前 " + n +
+      " 件随便挑、容量给足 " + CAP + " 时的最优解。<br>" +
+      "先记住一件事：<b>背包里每件物品「要么整件拿走、要么不拿」</b>，不允许只拿一半 —— 这就是 0/1 的含义。";
+  } else if (st.type === "border") {
+    T.textContent = "② 第 0 行：一件都不放，价值只能是 0";
+    D.innerHTML =
+      "第 0 行代表<b>什么物品都没考虑</b>。不管容量给多大，能装的总价值都是 <b>0</b>。<br>" +
+      "这行是递推的<b>起点</b>，省掉了大量特判。";
+  } else if (st.type === "calc") {
+    var i = st.i, j = st.j, w = W[i - 1], v = V[i - 1];
+    if (j < w) {
+      T.textContent = "③ 算 dp[" + i + "][" + j + "] —— 这件装不下";
+      D.innerHTML =
+        "第 " + i + " 件物品：价值 " + k(v) + "，重量 " + k(w) + "。<br>" +
+        "当前容量上限只有 " + k(j) + "，<b>放不下这一件</b>（" + w + " > " + j + "）。<br>" +
+        "所以只能走「不选」这条路：" +
+        k("dp[" + i + "][" + j + "] = dp[" + (i - 1) + "][" + j + "] = " + dp[i][j]) + "。";
+    } else {
+      var a = dp[i - 1][j], b = dp[i - 1][j - w] + v;
+      var pickTake = (b > a);
+      T.textContent = "③ 算 dp[" + i + "][" + j + "] —— 不选它，还是选它？";
+      D.innerHTML =
+        "第 " + i + " 件物品：价值 " + k(v) + "，重量 " + k(w) + "。容量上限 " + k(j) + "。<br>" +
+        "两条路比一比：<br>" +
+        "&nbsp;&nbsp;• <span class='up'>不选它</span> → 价值就是「前 " + (i - 1) + " 件、容量 " + j + "」：" +
+        k("dp[" + (i - 1) + "][" + j + "]") + " = <b>" + a + "</b><br>" +
+        "&nbsp;&nbsp;• <span class='take'>选它</span> → 先腾出 " + w + " 的容量，剩下的 " + (j - w) +
+        " 容量留给前 " + (i - 1) + " 件：" + k("dp[" + (i - 1) + "][" + (j - w) + "]") +
+        " + " + v + " = " + dp[i - 1][j - w] + " + " + v + " = <b>" + b + "</b><br>" +
+        "取大的：<b>" + k("dp[" + i + "][" + j + "] = " + dp[i][j]) + "</b>（采用了「" +
+        (pickTake ? "选它" : "不选它") + "」）。";
+    }
+  } else if (st.type === "done") {
+    T.textContent = "④ 右下角填完，答案出来了";
+    D.innerHTML =
+      "全表填完，" + k("dp[" + n + "][" + CAP + "]") + " = <b>" + dp[n][CAP] + "</b>，" +
+      "这就是题目要的最大价值。<br>" +
+      "它为什么是答案？因为它对应<b>全部物品</b>和<b>完整容量</b>。";
+  } else if (st.type === "trace") {
+    var up = dp[st.i - 1][st.j];
+    T.textContent = "⑤ 回溯：把方案倒着推出来";
+    D.innerHTML =
+      "想知道具体拿了哪几件，就从右下角往回走。走到 " + k("(" + st.i + ", " + st.j + ")") +
+      "，问一句：<b>不选第 " + st.i + " 件的话，价值会不会掉？</b><br>" +
+      "&nbsp;&nbsp;现在 " + k("dp[" + st.i + "][" + st.j + "] = " + dp[st.i][st.j]) +
+      "　vs　" + k("dp[" + (st.i - 1) + "][" + st.j + "] = " + up) + " → " +
+      (st.taken
+        ? "<b>变小了</b>！说明这份价值<b>正是靠第 " + st.i + " 件换来的</b>，收下它（重量 " + st.w +
+          "），容量从 " + st.j + " 退到 " + (st.j - st.w) + "。"
+        : "<b>一样大</b>，说明不选它也能拿到同样价值，<b>判它没收</b>，容量保持在 " + st.j + "。") +
+      "<br>然后往上一行（i 减 1）继续问。";
+  } else if (st.type === "finished") {
+    var tr = tracePath(V, W, CAP, dp);
+    var picks = [], tw = 0, tv = 0;
+    for (var t = 0; t < tr.path.length; t++) {
+      if (tr.path[t].taken) {
+        picks.push(tr.path[t].i);
+        tw += tr.path[t].w;
+        tv += tr.path[t].v;
+      }
+    }
+    /* 回溯顺序是"从后往前"，这里按物品号从小到大重排，读起来顺 */
+    picks.sort(function (a, b) { return a - b; });
+    var chosen = picks.map(function (i) { return "第" + i + "件"; });
+    var okAll = (tw <= CAP) && (tv === dp[V.length][CAP]);
+    T.textContent = "⑥ 完成！";
+    D.innerHTML =
+      "（下面已按物品号从小到大重排；回溯本身是从后往前走的）<br>" +
+      "选中：" + (chosen.length ? "<b>" + chosen.join("、") + "</b>" : "<b>一件都不拿</b>") + "。<br>" +
+      "总重量 = <b>" + tw + "</b>（≤ 容量 " + CAP + " ✓），总价值 = <b>" + tv + "</b>。<br><br>" +
+      "<b>自校验：</b>总重量 " + tw + " ≤ " + CAP + " -> " + (tw <= CAP ? "OK" : "错！") +
+      "；总价值 " + tv + " 是否等于 dp 表右下角的 " + dp[V.length][CAP] + " -> " +
+      (tv === dp[V.length][CAP] ? "OK" : "错！") +
+      "　=> <b>" + (okAll ? "ALL OK" : "FAILED") + "</b><br><br>" +
+      "<b>算法回顾：</b>共 " + V.length + "×" + (CAP + 1) + " ≈ <b>" +
+      (V.length * (CAP + 1)) + "</b> 个格子，每格只看两个来源，时间 <b>O(n·c)</b>；" +
+      "若按一维滚动数组写，空间还能降到 <b>O(c)</b>。";
+  }
+}
+
+/* ============ 控制 ============ */
+function setError(msg) { document.getElementById("errorBox").textContent = msg || ""; }
+
+function loadSample(which) {
+  var s = SAMPLES[which];
+  V = s.values.slice();
+  W = s.weights.slice();
+  CAP = s.cap;
+  load();
+}
+
+/* 自定义输入：格式 "容量 | 价值列表 | 重量列表" */
+function loadCustom() {
+  var raw = document.getElementById("seqInput").value.trim();
+  var parts = raw.split("|");
+  if (parts.length !== 3) {
+    setError("格式不对：请写成「容量 | 价值列表 | 重量列表」，用两个竖线隔开");
+    return;
+  }
+  var split = function (s) {
+    return s.trim().split(/[\s,]+/).filter(function (t) { return t.length; });
+  };
+  var capTok = split(parts[0]);
+  var vs = split(parts[1]);
+  var ws = split(parts[2]);
+  if (capTok.length !== 1 || !/^\d+$/.test(capTok[0])) {
+    setError("容量必须是一个非负整数");
+    return;
+  }
+  var cap = parseInt(capTok[0], 10);
+  if (cap > 20) { setError("容量最多 20，太大表格画不下"); return; }
+  if (vs.length === 0 || ws.length === 0) { setError("价值列表和重量列表都不能为空"); return; }
+  if (vs.length !== ws.length) {
+    setError("价值有 " + vs.length + " 个，重量有 " + ws.length + " 个，数量必须一样");
+    return;
+  }
+  if (vs.length > 8) { setError("物品最多 8 件，太多行会看不清"); return; }
+  var values = [], weights = [], bad = null;
+  for (var i = 0; i < vs.length; i++) {
+    if (!/^-?\d+$/.test(vs[i]) || !/^\d+$/.test(ws[i])) { bad = i + 1; break; }
+    values.push(parseInt(vs[i], 10));
+    weights.push(parseInt(ws[i], 10));
+  }
+  if (bad !== null) {
+    setError("第 " + bad + " 组数据不是整数（重量必须非负）");
+    return;
+  }
+  V = values; W = weights; CAP = cap;
+  load();
+}
+
+function load() {
+  dp = computeDp(V, W, CAP);
+  steps = buildSteps(V, W, CAP, dp);
+  stepIdx = 0;
+  stopPlay();
+  setError("");
+  render();
+}
+
+function reset() { if (steps.length) { stepIdx = 0; stopPlay(); render(); } }
+
+function nextStep() {
+  if (!steps.length) return;
+  if (stepIdx < steps.length - 1) { stepIdx++; render(); }
+  else stopPlay();
+}
+function prevStep() {
+  if (!steps.length) return;
+  if (stepIdx > 0) { stepIdx--; stopPlay(); render(); }
+}
+function togglePlay() {
+  if (!steps.length) return;
+  if (playing) stopPlay();
+  else {
+    if (stepIdx >= steps.length - 1) stepIdx = 0;
+    playing = true;
+    document.getElementById("btnPlay").textContent = "⏸ 暂停";
+    tick();
+  }
+}
+function tick() {
+  if (!playing) return;
+  render();
+  if (stepIdx >= steps.length - 1) { stopPlay(); return; }
+  timer = setTimeout(function () { stepIdx++; tick(); }, duration);
+}
+function stopPlay() {
+  playing = false;
+  if (timer) { clearTimeout(timer); timer = null; }
+  document.getElementById("btnPlay").textContent = "▶ 播放";
+}
+function changeSpeed() { duration = parseInt(document.getElementById("playSpeed").value, 10); }
+
+loadSample(1);
+</script>
+</body>
+</html>

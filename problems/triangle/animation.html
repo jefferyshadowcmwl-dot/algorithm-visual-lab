@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>数字三角形 · 动画精讲</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    min-height: 100vh; padding: 20px; color: #1b5e20;
+  }
+  .container {
+    max-width: 1100px; margin: 0 auto;
+    background: rgba(255,255,255,0.95); border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(30,100,50,0.18); padding: 26px;
+  }
+  h1 { text-align: center; color: #1b5e20; font-size: 26px; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: #558b2f; font-size: 14px; margin-bottom: 20px; }
+
+  .controls { display:flex; gap:9px; justify-content:center; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+  button, input, select {
+    padding: 8px 14px; border-radius: 8px; border: 1px solid #a5d6a7;
+    background:#fff; color:#2e7d32; font-size:14px; cursor:pointer; transition: all .18s;
+  }
+  button:hover { background:#66bb6a; color:#fff; transform: translateY(-1px); }
+  button.primary { background:#43a047; color:#fff; border-color:#388e3c; }
+  button.primary:hover { background:#2e7d32; }
+  input#triInput { width: 300px; font-family: monospace; }
+  .error { color:#c62828; text-align:center; min-height:20px; margin-bottom:8px; font-size:14px; }
+
+  /* ---------- 三角形舞台 ---------- */
+  .scene {
+    background: linear-gradient(180deg,#f1f8e9 0%,#dcedc8 100%);
+    border:2px solid #aed581; border-radius:12px;
+    padding: 26px 16px; margin-bottom:16px;
+    display:flex; justify-content:center; overflow-x:auto;
+  }
+  .triangle { display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .row { display:flex; gap:8px; }
+
+  .cell {
+    position: relative; width:62px; height:46px; border-radius:9px;
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:17px;
+    border:2px solid #bdbdbd; background:#fafafa; color:#616161;
+    transition: background .25s, border-color .25s, color .25s, transform .18s;
+  }
+  .cell .orig { position:absolute; top:1px; left:4px; font-size:9px; font-weight:400; opacity:.55; }
+
+  /* 格子状态 */
+  .cell.pending   { background:#fafafa; border-color:#bdbdbd; color:#9e9e9e; }   /* 还没算 */
+  .cell.base      { background:#fff9c4; border-color:#fdd835; color:#f57f17; }   /* 最后一行初始值 */
+  .cell.current   { background:#ff7043; border-color:#e64a19; color:#fff; transform:scale(1.14); box-shadow:0 0 0 4px rgba(255,112,67,.28); }
+  .cell.candidate { background:#bbdefb; border-color:#1e88e5; color:#0d47a1; transform:scale(1.07); }
+  .cell.chosen    { background:#66bb6a; border-color:#2e7d32; color:#fff; transform:scale(1.07); }
+  .cell.done      { background:#c8e6c9; border-color:#66bb6a; color:#1b5e20; }
+  .cell.path      { background:#ffd54f; border-color:#ff8f00; color:#e65100; box-shadow:0 0 0 3px rgba(255,213,79,.5); }
+
+  /* ---------- 状态条 ---------- */
+  .statusbar { display:flex; justify-content:space-between; align-items:center;
+               padding:10px 14px; background:#f1f8e9; border-radius:9px;
+               margin-bottom:14px; font-size:14px; color:#33691e; }
+  .answer { font-weight:700; font-size:18px; color:#1b5e20; }
+
+  /* ---------- 解说面板 ---------- */
+  .explain { background:#fffde7; border-left:5px solid #fbc02d; border-radius:9px; padding:16px 18px; min-height:130px; }
+  .explain-title { font-weight:700; color:#f57f17; margin-bottom:8px; font-size:16px; }
+  .explain-body { line-height:1.85; font-size:14.5px; color:#424242; }
+  .explain-body b { color:#c62828; }
+  .explain-body .k { background:#e8f5e9; padding:1px 6px; border-radius:4px; color:#1b5e20; font-family:monospace; }
+  .explain-body .hl { color:#e65100; font-weight:700; }
+
+  .legend { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; margin-top:14px; font-size:12.5px; color:#558b2f; }
+  .legend i { display:inline-block; width:13px; height:13px; border-radius:3px; margin-right:5px; vertical-align:-2px; border:1.5px solid; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>数字三角形 · 动画精讲</h1>
+  <p class="subtitle">每一步只做一件事：<b>自身 + 下方两格里较大的那个</b>（自底向上）</p>
+
+  <div class="controls">
+    <input id="triInput" type="text" value="5 7 3 8 8 1 0 2 7 4 4 4 5 2 6 5">
+    <button class="primary" onclick="setup()">设置</button>
+    <button onclick="prevStep()">◀ 上一步</button>
+    <button class="primary" onclick="togglePlay()" id="btnPlay">▶ 播放</button>
+    <button onclick="nextStep()">下一步 ▶</button>
+    <button onclick="reset()">↻ 重置</button>
+    <select id="playSpeed" onchange="changeSpeed()">
+      <option value="1400">慢速</option>
+      <option value="900" selected>正常</option>
+      <option value="450">快速</option>
+    </select>
+  </div>
+  <div class="error" id="errorBox"></div>
+
+  <div class="scene"><div class="triangle" id="triangle"></div></div>
+
+  <div class="statusbar">
+    <span id="stepCounter">步骤 0 / 0</span>
+    <span>最大路径和：<span class="answer" id="answerBox">—</span></span>
+  </div>
+
+  <div class="explain">
+    <div class="explain-title" id="stepTitle">点「设置」开始</div>
+    <div class="explain-body" id="stepDetail">
+      输入格式：第一个数是高度 H，后面依次是三角形每一行的数字（第 i 行 i 个）。
+      也可以用 <span class="k">0</span> 结尾，和 OJ 输入一致。
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:#fafafa;border-color:#bdbdbd"></i>还没算</span>
+    <span><i style="background:#fff9c4;border-color:#fdd835"></i>最后一行(初始值)</span>
+    <span><i style="background:#ff7043;border-color:#e64a19"></i>正在算这格</span>
+    <span><i style="background:#bbdefb;border-color:#1e88e5"></i>下方两个候选</span>
+    <span><i style="background:#66bb6a;border-color:#2e7d32"></i>被选中的</span>
+    <span><i style="background:#c8e6c9;border-color:#66bb6a"></i>已算好</span>
+    <span><i style="background:#ffd54f;border-color:#ff8f00"></i>最优路径</span>
+  </div>
+</div>
+
+<script>
+/* ============ 状态 ============ */
+let orig = [];        // 原始三角形
+let dpTable = [];     // 完整 DP 表：dpTable[i][j] = 从 (i,j) 到底边的最大和
+let steps = [];       // 步骤序列
+let stepIdx = 0;
+let playing = false;
+let timer = null;
+let duration = 900;
+
+/* ============ 完整 DP 表（回溯路径必须靠它，不能拿原始值比大小） ============ */
+function computeDp(tri) {
+  const h = tri.length;
+  const dp = tri.map(r => r.slice());
+  for (let i = h - 2; i >= 0; i--) {
+    for (let j = 0; j <= i; j++) {
+      dp[i][j] = tri[i][j] + Math.max(dp[i + 1][j], dp[i + 1][j + 1]);
+    }
+  }
+  return dp;
+}
+
+/* ============ 解析输入 ============ */
+function parseInput() {
+  const raw = document.getElementById("triInput").value.trim();
+  if (!raw) return null;
+  const nums = raw.split(/[\s,]+/).map(x => parseInt(x, 10)).filter(x => !isNaN(x));
+  if (nums.length < 1) return null;
+  const h = nums[0];
+  if (h === 0) return null;
+  const need = h * (h + 1) / 2;
+  if (nums.length - 1 < need) return null;
+  const tri = [];
+  let p = 1;
+  for (let i = 0; i < h; i++) {
+    const row = [];
+    for (let j = 0; j <= i; j++) row.push(nums[p++]);
+    tri.push(row);
+  }
+  return tri;
+}
+
+/* ============ 生成步骤序列 ============ */
+function buildSteps(tri) {
+  const h = tri.length;
+  const s = [];
+  s.push({ type: "intro" });
+  s.push({ type: "initLast" });
+  for (let i = h - 2; i >= 0; i--) {
+    for (let j = 0; j <= i; j++) {
+      s.push({ type: "calc", i: i, j: j });
+    }
+  }
+  s.push({ type: "done" });
+  /* 回溯：每一步比较下方两格的 **dp 值**（不是原始数字！） */
+  const dp = computeDp(tri);
+  let j = 0;
+  for (let i = 0; i < h; i++) {
+    s.push({ type: "path", i: i, j: j });
+    if (i < h - 1 && dp[i + 1][j + 1] > dp[i + 1][j]) j++;
+  }
+  s.push({ type: "finished" });
+  return s;
+}
+
+/* ============ 重放到第 k 步，得到每格状态 ============ */
+function stateAt(k) {
+  const h = orig.length;
+  const val = orig.map(r => r.slice());          // 显示值（原值或 dp 值）
+  const cls = orig.map(r => r.map(() => "pending"));
+  let answer = null;
+  const pathSet = {};
+
+  for (let t = 0; t <= k && t < steps.length; t++) {
+    const st = steps[t];
+    if (st.type === "initLast") {
+      for (let j = 0; j < h; j++) cls[h - 1][j] = "base";
+    } else if (st.type === "calc") {
+      const i = st.i, j = st.j;
+      if (i + 1 < h) {
+        val[i][j] = orig[i][j] + Math.max(val[i + 1][j], val[i + 1][j + 1]);
+      }
+      cls[i][j] = "done";
+    } else if (st.type === "path") {
+      pathSet[st.i + "," + st.j] = true;
+    }
+  }
+
+  /* 当前步的强调（放最后，覆盖上面的 class） */
+  const cur = steps[Math.min(k, steps.length - 1)];
+  if (cur.type === "calc") {
+    const i = cur.i, j = cur.j;
+    cls[i][j] = "current";
+    if (i + 1 < h) {
+      const a = orig[i + 1][j], b = orig[i + 1][j + 1];
+      if (a >= b) { cls[i + 1][j] = "chosen"; cls[i + 1][j + 1] = "candidate"; }
+      else        { cls[i + 1][j] = "candidate"; cls[i + 1][j + 1] = "chosen"; }
+    }
+  }
+  if (cur.type === "path") {
+    cls[cur.i][cur.j] = "path";
+  }
+  for (const key in pathSet) {
+    const p = key.split(",").map(Number);
+    if (cls[p[0]][p[1]] !== "current") cls[p[0]][p[1]] = "path";
+  }
+  if (k >= steps.length - 1 && steps.length) {
+    answer = val[0][0];
+  }
+  /* 答案在 done 之后就可确定 */
+  for (let t = 0; t <= k && t < steps.length; t++) {
+    if (steps[t].type === "done") answer = val[0][0];
+  }
+  return { val: val, cls: cls, answer: answer };
+}
+
+/* ============ 渲染 ============ */
+function render() {
+  const tri = document.getElementById("triangle");
+  const { val, cls, answer } = stateAt(stepIdx);
+
+  /* 增量复用节点（避免每帧重建 DOM） */
+  const h = orig.length;
+  while (tri.children.length > h) tri.removeChild(tri.lastChild);
+  while (tri.children.length < h) {
+    const row = document.createElement("div");
+    row.className = "row";
+    tri.appendChild(row);
+  }
+  for (let i = 0; i < h; i++) {
+    const rowEl = tri.children[i];
+    while (rowEl.children.length > i + 1) rowEl.removeChild(rowEl.lastChild);
+    while (rowEl.children.length < i + 1) {
+      const c = document.createElement("div");
+      c.className = "cell";
+      c.innerHTML = '<span class="orig"></span><span class="v"></span>';
+      rowEl.appendChild(c);
+    }
+    for (let j = 0; j <= i; j++) {
+      const cell = rowEl.children[j];
+      const shown = val[i][j];
+      cell.className = "cell " + cls[i][j];
+      cell.querySelector(".v").textContent = shown;
+      cell.querySelector(".orig").textContent = (shown === orig[i][j]) ? "" : orig[i][j];
+    }
+  }
+  document.getElementById("stepCounter").textContent =
+    "步骤 " + Math.min(stepIdx + 1, steps.length) + " / " + steps.length;
+  document.getElementById("answerBox").textContent = (answer === null ? "—" : answer);
+  updateExplain();
+}
+
+/* ============ 解说文字 ============ */
+function updateExplain() {
+  const st = steps[Math.min(stepIdx, steps.length - 1)];
+  const h = orig.length;
+  const T = document.getElementById("stepTitle");
+  const D = document.getElementById("stepDetail");
+  const k = s => '<span class="k">' + s + '</span>';
+
+  if (st.type === "intro") {
+    T.textContent = "① 看懂题目：只能往正下方 / 右下方走";
+    D.innerHTML =
+      "这是题目给的三角形（共 " + h + " 行）。从<b>最顶上</b>出发，每一步只有两个选择：" +
+      "<span class='hl'>正下方</span> 或 <span class='hl'>右下方</span>，一直走到最底边。" +
+      "我们要找一条路径，让它经过的数字加起来<b>最大</b>。<br>" +
+      "暴力枚举所有路径是 2^(H-1) 种，太大 —— 所以用<b>动态规划</b>。";
+  } else if (st.type === "initLast") {
+    T.textContent = "② 关键想法：从下往上算";
+    D.innerHTML =
+      "与其从顶点往下试（走法太多），不如反过来：<br>" +
+      "先问<b>「从某一格出发，走到最底边，最大能拿多少？」</b> 把这个值记作这一格的 <b>dp 值</b>。<br><br>" +
+      "那<b>最后一行</b>的 dp 值是多少？—— 它已经在底边了，<b>没有下一步</b>，" +
+      "所以 <b>dp 就是它自己的数字</b>。这就是我们现在标记成黄色的那 5 个数：" +
+      k(orig[h - 1].join("  ")) + "。";
+  } else if (st.type === "calc") {
+    const i = st.i, j = st.j;
+    const a = orig[i + 1][j], b = orig[i + 1][j + 1];
+    const pickA = a >= b;
+    const mx = Math.max(a, b);
+    const res = orig[i][j] + mx;
+    T.textContent = "③ 算第 " + (i + 1) + " 行第 " + (j + 1) + " 列";
+    D.innerHTML =
+      "这一格原来的数字是 <b>" + orig[i][j] + "</b>。<br>" +
+      "从它出发，下一步只能走两处：<br>" +
+      "&nbsp;&nbsp;• <b>正下方</b> → 第 " + (i + 2) + " 行第 " + (j + 1) + " 列，dp = " + k(a) + "<br>" +
+      "&nbsp;&nbsp;• <b>右下方</b> → 第 " + (i + 2) + " 行第 " + (j + 2) + " 列，dp = " + k(b) + "<br>" +
+      "这两格的 dp 都已经算好了（绿色/已算好）。要最大当然走大的那个：" +
+      "<span class='hl'>max(" + a + ", " + b + ") = " + mx + "</span>（" + (pickA ? "正下方" : "右下方") + "那格）。<br>" +
+      "所以这一格的 dp 值 = 自身 + 选中的那个 = <b>" + orig[i][j] + " + " + mx + " = " + res + "</b>。";
+  } else if (st.type === "done") {
+    T.textContent = "④ 顶点算完，答案出来了";
+    D.innerHTML =
+      "现在 <b>第 1 行第 1 列（顶点）</b> 也填好了：<b>dp = " + orig[0][0] +
+      "</b>。它的含义正是我们要问的那个问题 —— <b>从顶点出发到底边的最大路径和</b>。" +
+      "<br>所以答案就是 <b>" + stateAt(stepIdx).val[0][0] + "</b>。";
+  } else if (st.type === "path") {
+    T.textContent = "⑤ 回溯最优路径（第 " + (st.i + 1) + " 行）";
+    D.innerHTML =
+      "想要知道<b>具体走了哪条路</b>，就从顶点往下走一遍：每到一个格子，" +
+      "看看它<b>正下方</b>和<b>右下方</b>两格的 dp 值，<b>往大的那边走</b>即可（dp 已经告诉我们哪边更优）。" +
+      "现在走到第 " + (st.i + 1) + " 行第 " + (st.j + 1) + " 列，数字 <b>" + orig[st.i][st.j] + "</b>。";
+  } else if (st.type === "finished") {
+    const path = [];
+    const dpf = computeDp(orig);
+    let j = 0;
+    for (let i = 0; i < h; i++) {
+      path.push(orig[i][j]);
+      if (i < h - 1 && dpf[i + 1][j + 1] > dpf[i + 1][j]) j++;
+    }
+    T.textContent = "⑥ 完成！";
+    D.innerHTML =
+      "最优路径（金色）：<b>" + path.join(" → ") + "</b><br>" +
+      "数字之和 = <b>" + path.reduce((x, y) => x + y, 0) + "</b>，正是顶点的 dp 值。<br><br>" +
+      "<b>总结这个算法：</b>自底向上，每个格子只做一次 自身 + max(下方, 右下方)，" +
+      "总共算 H(H+1)/2 个格子 → 时间复杂度 <b>O(H²)</b>，比暴力枚举的 2^(H-1) 快得多。";
+  }
+}
+
+/* ============ 控制 ============ */
+function setError(msg) {
+  document.getElementById("errorBox").textContent = msg || "";
+}
+
+function setup() {
+  const tri = parseInput();
+  if (!tri) { setError("输入不合法：需要「高度 H + H 行数字」"); return; }
+  if (tri.length > 14) { setError("为了让动画看得清，高度请 ≤ 14"); return; }
+  setError("");
+  orig = tri;
+  dpTable = computeDp(tri);
+  steps = buildSteps(tri);
+  stepIdx = 0;
+  stopPlay();
+  render();
+}
+
+function reset() { if (orig.length) { stepIdx = 0; stopPlay(); render(); } }
+
+function nextStep() {
+  if (!steps.length) return;
+  if (stepIdx < steps.length - 1) { stepIdx++; render(); }
+  else stopPlay();
+}
+
+function prevStep() {
+  if (!steps.length) return;
+  if (stepIdx > 0) { stepIdx--; stopPlay(); render(); }
+}
+
+function togglePlay() {
+  if (!steps.length) return;
+  if (playing) stopPlay();
+  else {
+    if (stepIdx >= steps.length - 1) stepIdx = 0;
+    playing = true;
+    document.getElementById("btnPlay").textContent = "⏸ 暂停";
+    tick();
+  }
+}
+
+function tick() {
+  if (!playing) return;
+  render();
+  if (stepIdx >= steps.length - 1) { stopPlay(); return; }
+  timer = setTimeout(function () { stepIdx++; tick(); }, duration);
+}
+
+function stopPlay() {
+  playing = false;
+  if (timer) { clearTimeout(timer); timer = null; }
+  document.getElementById("btnPlay").textContent = "▶ 播放";
+}
+
+function changeSpeed() {
+  duration = parseInt(document.getElementById("playSpeed").value, 10);
+}
+
+/* 启动 */
+setup();
+</script>
+</body>
+</html>

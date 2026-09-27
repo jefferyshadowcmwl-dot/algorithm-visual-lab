@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.stackdump
+.DS_Store
+Thumbs.db
+
+# 密钥类（**绝不要提交**）—— deploy_github.py 上传时也会跳过这些
+token*.txt
+*.token
+*.key
+*.pem
+.env
+*secret*
+*credential*

@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>均分纸牌动画演示</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #3e2723;
+  }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: rgba(255,255,255,0.94);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(200,100,30,0.18);
+    padding: 28px;
+  }
+  h1 { text-align: center; color: #bf360c; margin-bottom: 8px; font-size: 28px; }
+  .subtitle { text-align: center; color: #6d4c41; margin-bottom: 22px; font-size: 14px; }
+  .controls {
+    display: flex; gap: 10px; justify-content: center; align-items: center;
+    flex-wrap: wrap; margin-bottom: 18px;
+  }
+  button, input, select {
+    padding: 8px 14px; border-radius: 8px; border: 1px solid #ffab91;
+    background: #fff; color: #bf360c; font-size: 14px; cursor: pointer;
+    transition: all 0.2s;
+  }
+  button:hover { background: #ff7043; color: #fff; transform: translateY(-1px); }
+  button.primary { background: #e64a19; color: #fff; border-color: #d84315; }
+  button.primary:hover { background: #d84315; }
+  .speed-group { display: flex; gap: 4px; align-items: center; }
+  .speed-group label { font-size: 13px; color: #6d4c41; }
+
+  /* 卡片堆展示区 */
+  .scene {
+    position: relative;
+    width: 100%;
+    min-height: 360px;
+    background: linear-gradient(180deg, #fff8e1 0%, #ffecb3 100%);
+    border-radius: 12px;
+    border: 2px solid #ffb74d;
+    padding: 30px 20px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+
+  /* 单堆 */
+  .pile {
+    display: flex; flex-direction: column; align-items: center;
+    min-width: 90px; position: relative;
+  }
+  .pile-label {
+    font-size: 14px; font-weight: bold; color: #bf360c;
+    margin-bottom: 8px;
+  }
+  .pile-target {
+    font-size: 11px; color: #6d4c41; margin-bottom: 4px;
+  }
+  .pile-stack {
+    position: relative;
+    width: 80px;
+    height: 220px;
+    display: flex; flex-direction: column-reverse;
+    align-items: center;
+    padding: 4px;
+    background: rgba(255,255,255,0.6);
+    border: 2px dashed #ffcc80;
+    border-radius: 8px;
+    transition: border-color 0.3s;
+  }
+  .pile-stack.active { border-color: #e64a19; border-style: solid; }
+  .pile-stack.done { border-color: #66bb6a; border-style: solid; }
+
+  /* 单张卡牌 */
+  .card {
+    width: 56px; height: 16px;
+    background: linear-gradient(180deg, #ff7043, #e64a19);
+    border: 1px solid #bf360c;
+    border-radius: 3px;
+    margin-bottom: 1px;
+    color: #fff; font-size: 9px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    transition: opacity 0.4s, transform 0.6s cubic-bezier(0.5, 0, 0.5, 1);
+  }
+  .card.moving-out {
+    opacity: 0; transform: translateY(-30px) scale(0.5);
+  }
+  .card.moving-in {
+    opacity: 0; transform: translateY(30px) scale(0.5);
+  }
+  .card.moved {
+    background: linear-gradient(180deg, #66bb6a, #43a047);
+    border-color: #2e7d32;
+  }
+
+  .pile-count {
+    margin-top: 8px; font-size: 16px; font-weight: bold; color: #bf360c;
+  }
+  .pile-count.done { color: #2e7d32; }
+
+  /* 飞行中的纸牌 */
+  .flying-card {
+    position: absolute;
+    width: 56px; height: 16px;
+    background: linear-gradient(180deg, #ffeb3b, #fbc02d);
+    border: 2px solid #f57f17;
+    border-radius: 3px;
+    color: #f57f17; font-size: 10px; font-weight: bold;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 100;
+    pointer-events: none;
+    transition: all 0.8s cubic-bezier(0.5, 0, 0.5, 1);
+  }
+
+  /* 步骤说明 */
+  .step-info {
+    background: #fff3e0;
+    border-left: 5px solid #ff7043;
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    min-height: 80px;
+  }
+  .step-title { font-size: 18px; font-weight: bold; color: #bf360c; margin-bottom: 6px; }
+  .step-detail { font-size: 15px; color: #5d4037; line-height: 1.6; }
+  .step-tag {
+    display: inline-block; background: #ffe082; color: #bf360c;
+    padding: 2px 10px; border-radius: 12px; font-weight: bold; margin-left: 8px;
+  }
+
+  /* 进度 */
+  .progress {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #efebe9; padding: 12px 18px; border-radius: 8px; margin-bottom: 16px;
+  }
+  .timer { font-size: 22px; font-weight: bold; color: #d84315; }
+  .step-counter { color: #5d4037; font-size: 14px; }
+
+  /* 算法说明 */
+  .algo-explain {
+    background: #fff8e1; border: 1px solid #ffcc80;
+    border-radius: 8px; padding: 14px 18px; margin-bottom: 14px;
+    font-size: 14px; line-height: 1.7;
+  }
+  .algo-explain h3 { color: #bf360c; margin-bottom: 8px; }
+  .error { background: #ffcdd2; color: #b71c1c; padding: 10px 14px; border-radius: 8px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🃏 均分纸牌动画演示</h1>
+  <p class="subtitle">贪心算法 · 从左到右 · 一次扫一遍</p>
+
+  <div class="controls">
+    <label>初始纸牌：</label>
+    <input id="cardInput" type="text" value="9 8 17 6" style="width:200px;">
+    <button class="primary" onclick="setup()">设置</button>
+    <button onclick="prevStep()" id="btnPrev">◀ 上一步</button>
+    <button class="primary" onclick="togglePlay()" id="btnPlay">▶ 播放</button>
+    <button onclick="nextStep()" id="btnNext">下一步 ▶</button>
+    <button onclick="reset()">↻ 重置</button>
+    <div class="speed-group">
+      <label>速度：</label>
+      <select id="playSpeed" onchange="changeSpeed()">
+        <option value="2400">慢</option>
+        <option value="1200" selected>正常</option>
+        <option value="600">快</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="errorBox"></div>
+
+  <div class="scene" id="scene"></div>
+
+  <div class="progress">
+    <div class="step-counter" id="stepCounter">步数：0 / 0</div>
+    <div class="timer" id="timer">⏱️ 已移动：0 次</div>
+  </div>
+
+  <div class="step-info">
+    <div class="step-title" id="stepTitle">请输入纸牌数后点击「设置」开始</div>
+    <div class="step-detail" id="stepDetail">例如：9 8 17 6 → 最少 3 次</div>
+  </div>
+
+  <div class="algo-explain">
+    <h3>📖 算法核心（点击展开）</h3>
+    <details>
+      <summary style="cursor:pointer; color:#0288d1;">点击查看详细策略说明</summary>
+      <p style="margin-top:10px;">
+        <b>目标</b>：让 N 堆纸牌每堆都等于平均值 avg = sum / N
+      </p>
+      <p>
+        <b>贪心思路</b>：从左到右扫描，如果第 i 堆不等于 avg，
+        必须立刻从 i 或 i+1 调整（移动一次），把 i 强制变为 avg，
+        剩余偏差转嫁给 i+1。
+      </p>
+      <p>
+        <b>正确性</b>：前 i 堆保持为 avg 时，后续 i+1..N-1 的最优解
+        不受前面影响（无后效性），所以每遇到偏差就立即修复是最优的。
+      </p>
+      <p><b>时间复杂度</b>：O(N)，扫一遍即可。</p>
+    </details>
+  </div>
+</div>
+
+<script>
+/* ===== 与 Python 一致的算法 ===== */
+function minMoves(cards) {
+  const n = cards.length;
+  const avg = cards.reduce((a, b) => a + b, 0) / n;
+  const piles = [...cards];
+  const steps = [];   // {src, dst, amount, snapshot}
+
+  for (let i = 0; i < n - 1; i++) {
+    if (piles[i] !== avg) {
+      const diff = piles[i] - avg;
+      if (diff > 0) {
+        piles[i + 1] += diff;
+        piles[i] = avg;
+        steps.push({ src: i, dst: i + 1, amount: diff, snapshot: [...piles] });
+      } else {
+        const amount = -diff;
+        piles[i + 1] -= amount;
+        piles[i] = avg;
+        steps.push({ src: i + 1, dst: i, amount, snapshot: [...piles] });
+      }
+    }
+  }
+  return { moves: steps.length, steps, avg };
+}
+
+/* ===== 状态 ===== */
+const state = {
+  initial: [],
+  avg: 0,
+  moves: 0,
+  steps: [],
+  piles: [],           // 当前每堆张数
+  stepIdx: 0,
+  playing: false,
+  timerId: null,
+  playDuration: 1200,
+};
+
+function setError(msg) {
+  document.getElementById("errorBox").innerHTML =
+    msg ? `<div class="error">⚠️ ${msg}</div>` : "";
+}
+
+function setup() {
+  setError("");
+  const raw = document.getElementById("cardInput").value.trim();
+  const arr = raw.split(/[\s,]+/).map(x => parseInt(x, 10)).filter(x => !isNaN(x));
+  if (arr.length < 1) { setError("请输入至少 1 个数！"); return; }
+  if (arr.length > 100) { setError("N <= 100"); return; }
+  const total = arr.reduce((a, b) => a + b, 0);
+  if (total % arr.length !== 0) {
+    setError(`总数 ${total} 不是 N=${arr.length} 的倍数，无法均分！`);
+    return;
+  }
+
+  const { moves, steps, avg } = minMoves(arr);
+  state.initial = arr;
+  state.avg = avg;
+  state.moves = moves;
+  state.steps = steps;
+  state.piles = [...arr];
+  state.stepIdx = 0;
+  state.playing = false;
+  clearTimeout(state.timerId);
+  document.getElementById("btnPlay").textContent = "▶ 播放";
+
+  drawScene();
+  updateStepInfo();
+}
+
+function drawScene() {
+  const scene = document.getElementById("scene");
+  scene.innerHTML = "";
+  state.piles.forEach((count, idx) => {
+    const pile = document.createElement("div");
+    pile.className = "pile";
+    pile.dataset.idx = idx;
+
+    const label = document.createElement("div");
+    label.className = "pile-label";
+    label.textContent = `堆 ${idx + 1}`;
+    pile.appendChild(label);
+
+    const target = document.createElement("div");
+    target.className = "pile-target";
+    target.textContent = `目标: ${state.avg}`;
+    pile.appendChild(target);
+
+    const stack = document.createElement("div");
+    stack.className = "pile-stack";
+    if (count === state.avg && state.stepIdx >= state.steps.length) stack.classList.add("done");
+    for (let c = 0; c < count; c++) {
+      const card = document.createElement("div");
+      card.className = "card";
+      if (count === state.avg && state.stepIdx >= state.steps.length) {
+        card.classList.add("moved");
+      }
+      card.textContent = c + 1;
+      stack.appendChild(card);
+    }
+    pile.appendChild(stack);
+
+    const cnt = document.createElement("div");
+    cnt.className = "pile-count";
+    if (count === state.avg && state.stepIdx >= state.steps.length) cnt.classList.add("done");
+    cnt.textContent = `${count} 张`;
+    pile.appendChild(cnt);
+
+    scene.appendChild(pile);
+  });
+}
+
+function updateStepInfo() {
+  document.getElementById("stepCounter").textContent =
+    `步数：${state.stepIdx} / ${state.steps.length}`;
+  document.getElementById("timer").textContent = `⏱️ 已移动：${state.stepIdx} 次`;
+
+  const title = document.getElementById("stepTitle");
+  const detail = document.getElementById("stepDetail");
+
+  if (state.stepIdx === 0) {
+    title.textContent = "准备开始均分";
+    detail.textContent = `初始：${state.initial.join(", ")}；目标每堆 ${state.avg} 张；总步数 ${state.steps.length}`;
+    return;
+  }
+  if (state.stepIdx > state.steps.length) {
+    title.textContent = "✓ 已完成";
+    detail.textContent = `所有堆均为 ${state.avg} 张，共移动 ${state.moves} 次`;
+    return;
+  }
+
+  const step = state.steps[state.stepIdx - 1];
+  title.textContent = `第 ${state.stepIdx} 步：从堆 ${step.src + 1} 移到堆 ${step.dst + 1}`;
+  detail.innerHTML = `移动 ${step.amount} 张 <span class="step-tag">操作后：${step.snapshot.join(", ")}</span>`;
+}
+
+/* ===== 单步执行（带飞行纸牌动画） ===== */
+function applyStep(step) {
+  return new Promise(resolve => {
+    const scene = document.getElementById("scene");
+    const srcEl = scene.querySelector(`.pile[data-idx="${step.src}"]`);
+    const dstEl = scene.querySelector(`.pile[data-idx="${step.dst}"]`);
+
+    if (!srcEl || !dstEl) { resolve(); return; }
+
+    const sceneRect = scene.getBoundingClientRect();
+    const srcRect = srcEl.getBoundingClientRect();
+    const dstRect = dstEl.getBoundingClientRect();
+
+    const startX = srcRect.left - sceneRect.left + srcRect.width / 2 - 28;
+    const startY = srcRect.top - sceneRect.top + 30;
+    const endX   = dstRect.left - sceneRect.left + dstRect.width / 2 - 28;
+    const endY   = dstRect.top - sceneRect.top + 30;
+
+    // 飞行纸牌
+    const flyer = document.createElement("div");
+    flyer.className = "flying-card";
+    flyer.textContent = `× ${step.amount}`;
+    flyer.style.left = startX + "px";
+    flyer.style.top = startY + "px";
+    flyer.style.transform = "translate(-50%, -50%)";
+    scene.appendChild(flyer);
+
+    // 强制 reflow
+    void flyer.offsetHeight;
+
+    // 飞到目标
+    flyer.style.left = endX + "px";
+    flyer.style.top = endY + "px";
+
+    // 同时让源堆"掉"几张
+    const srcStack = srcEl.querySelector(".pile-stack");
+    const srcCards = srcStack.querySelectorAll(".card");
+    for (let i = 0; i < step.amount && i < srcCards.length; i++) {
+      srcCards[srcCards.length - 1 - i].classList.add("moving-out");
+    }
+
+    setTimeout(() => {
+      // 更新 state.piles
+      state.piles[step.src] -= step.amount;
+      state.piles[step.dst] += step.amount;
+
+      flyer.remove();
+
+      // 重新绘制（让 dst 堆新增几张）
+      drawScene();
+
+      setTimeout(resolve, 200);
+    }, 850);
+  });
+}
+
+async function nextStep() {
+  if (state.stepIdx >= state.steps.length) {
+    if (state.playing) {
+      state.playing = false;
+      clearTimeout(state.timerId);
+      document.getElementById("btnPlay").textContent = "✓ 完成";
+    }
+    return;
+  }
+  const step = state.steps[state.stepIdx];
+  await applyStep(step);
+  state.stepIdx++;
+  updateStepInfo();
+  if (state.stepIdx === state.steps.length) {
+    state.playing = false;
+    clearTimeout(state.timerId);
+    document.getElementById("btnPlay").textContent = "✓ 完成";
+  }
+}
+
+function prevStep() {
+  if (state.stepIdx === 0) return;
+  state.stepIdx--;
+  state.piles = [...state.initial];
+  for (let i = 0; i < state.stepIdx; i++) {
+    const s = state.steps[i];
+    state.piles[s.src] -= s.amount;
+    state.piles[s.dst] += s.amount;
+  }
+  drawScene();
+  updateStepInfo();
+  document.getElementById("btnPlay").textContent =
+    state.stepIdx === state.steps.length ? "✓ 完成" : "▶ 播放";
+}
+
+function reset() {
+  state.stepIdx = 0;
+  state.playing = false;
+  clearTimeout(state.timerId);
+  document.getElementById("btnPlay").textContent = "▶ 播放";
+  state.piles = [...state.initial];
+  drawScene();
+  updateStepInfo();
+}
+
+async function togglePlay() {
+  if (state.playing) {
+    state.playing = false;
+    clearTimeout(state.timerId);
+    document.getElementById("btnPlay").textContent = "▶ 播放";
+    return;
+  }
+  if (state.stepIdx >= state.steps.length) reset();
+  if (state.steps.length === 0) return;
+  state.playing = true;
+  document.getElementById("btnPlay").textContent = "⏸ 暂停";
+
+  while (state.playing && state.stepIdx < state.steps.length) {
+    await nextStep();
+    if (!state.playing) break;
+    await new Promise(r => setTimeout(r, state.playDuration));
+  }
+}
+
+function changeSpeed() {
+  state.playDuration = parseInt(document.getElementById("playSpeed").value, 10);
+}
+
+window.addEventListener("load", () => setTimeout(setup, 100));
+window.addEventListener("resize", drawScene);
+</script>
+</body>
+</html>

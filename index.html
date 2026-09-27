@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>算法可视化实验室 · 10 道经典算法题</title>
+<meta name="description" content="10 道经典算法题：详细题解 + 可交互动画 + 可复制的去注释源码。">
+<link rel="stylesheet" href="assets/style.css?v=20260927231638">
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+
+<div class="shell">
+
+  <aside class="side" aria-label="题目目录">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">AVL</div>
+      <div class="brand-text">
+        <h1>算法可视化实验室</h1>
+        <p>10 道经典题 · 题解 / 动画 / 源码</p>
+      </div>
+    </div>
+
+    <div class="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true" class="ico"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="搜索题名 / 分类 / 关键词  （按 / 聚焦）"
+             aria-label="搜索题目" autocomplete="off">
+    </div>
+
+    <nav class="list" id="list" role="tablist" aria-orientation="vertical"></nav>
+
+    <div class="side-foot">
+      <p><span class="dot" aria-hidden="true"></span> 源码可一键复制：默认<b>去注释</b>，也可切回含注释的原版</p>
+      <p>动画均为自包含单文件，离线也能跑</p>
+    </div>
+  </aside>
+
+  <main id="main" class="main">
+    <header class="head" id="head"></header>
+
+    <div class="tabs" role="tablist" aria-label="内容切换" id="tabs">
+      <button class="tab" role="tab" data-tab="doc" aria-selected="true">详解</button>
+      <button class="tab" role="tab" data-tab="anim" aria-selected="false">动画</button>
+      <button class="tab" role="tab" data-tab="src" aria-selected="false">源码</button>
+      <div class="tab-rule" aria-hidden="true"></div>
+    </div>
+
+    <section id="panel-doc" class="panel prose" role="tabpanel" aria-label="详解"></section>
+    <section id="panel-anim" class="panel" role="tabpanel" aria-label="动画" hidden></section>
+    <section id="panel-src" class="panel" role="tabpanel" aria-label="源码" hidden></section>
+  </main>
+
+</div>
+
+<script src="assets/data.js?v=20260927231638"></script>
+<script src="assets/app.js?v=20260927231638"></script>
+</body>
+</html>

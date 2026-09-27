@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>n 个 1 · 动画精讲</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 55%, #fce7f3 100%);
+    min-height: 100vh; padding: 18px; color: #78350f;
+  }
+  .container {
+    max-width: 1240px; margin: 0 auto; background: rgba(255,255,255,0.97);
+    border-radius: 16px; box-shadow: 0 8px 32px rgba(120,53,15,0.16); padding: 22px;
+  }
+  h1 { text-align: center; font-size: 25px; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: #b45309; font-size: 13.5px; margin-bottom: 16px; }
+
+  .controls { display:flex; gap:9px; justify-content:center; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+  button, input, select, textarea {
+    padding: 8px 14px; border-radius: 8px; border: 1px solid #fcd34d;
+    background:#fff; color:#b45309; font-size:14px; cursor:pointer; transition: all .18s;
+    font-family: inherit;
+  }
+  button:hover { background:#fbbf24; color:#fff; transform: translateY(-1px); }
+  button.primary { background:#d97706; color:#fff; border-color:#b45309; }
+  button.primary:hover { background:#b45309; }
+  textarea { width: 430px; height: 70px; cursor: text; font-family: Consolas, monospace; font-size: 13px; }
+  .error { color:#dc2626; text-align:center; min-height:20px; margin-bottom:6px; font-size:13.5px; }
+  .picks { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:10px; }
+  .picks button.on { background:#b45309; color:#fff; }
+
+  /* ---------- 数字条（11...1） ---------- */
+  .stripwrap { display:flex; align-items:center; gap:10px; justify-content:center;
+               flex-wrap:wrap; margin-bottom:12px; }
+  .digits { display:flex; gap:4px; flex-wrap:wrap; justify-content:center; }
+  .digit { width:30px; height:36px; line-height:34px; text-align:center; font-weight:700;
+           font-size:15px; border-radius:7px; background:#fffbeb;
+           border:2px solid #fcd34d; color:#b45309; transition: all .18s; }
+  .digit.new { background:#f59e0b; border-color:#b45309; color:#fff; transform:scale(1.12); }
+  .digit.more { background:#f3f4f6; border-color:#d1d5db; color:#6b7280; font-size:13px;
+                width:auto; padding:0 10px; }
+  .badge { background:#fef3c7; border:2px solid #fcd34d; border-radius:999px;
+           padding:6px 14px; font-weight:700; color:#92400e; font-size:14px; }
+
+  /* ---------- 公式卡 ---------- */
+  .formula { text-align:center; background:#fffbeb; border:1px dashed #fcd34d;
+             border-radius:12px; padding:14px; margin-bottom:12px; font-size:15px; line-height:2; }
+  .formula .k { font-family: Consolas, monospace; background:#fff; border:1px solid #fde68a;
+                border-radius:5px; padding:2px 7px; color:#92400e; font-weight:700; }
+  .formula .zero { color:#059669; font-weight:700; }
+  .formula .big { font-size:19px; }
+
+  .main { display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; }
+  .left { flex: 1 1 520px; min-width: 380px; }
+  .right { flex: 1 1 330px; min-width: 300px; }
+
+  table.rem { border-collapse: separate; border-spacing: 3px; width:100%; }
+  table.rem th { background:#fffbeb; color:#b45309; border:2px solid #fde68a;
+                 font-size:12.5px; padding:4px 2px; border-radius:6px; }
+  table.rem td { background:#fafafa; border:2px solid #e5e7eb; color:#64748b;
+                 font-size:12.5px; text-align:center; padding:3px 2px; border-radius:6px;
+                 font-family: Consolas, monospace; }
+  table.rem tr.cur td { background:#f59e0b; border-color:#b45309; color:#fff; font-weight:700; }
+  table.rem tr.hit td { background:#10b981; border-color:#047857; color:#fff; font-weight:700; }
+  table.rem tr.gap td { background:#f3f4f6; color:#9ca3af; font-style:italic; }
+
+  .statusbar { display:flex; justify-content:space-between; align-items:center; gap:10px;
+               padding:10px 14px; background:#fffbeb; border-radius:9px;
+               margin:12px 0; font-size:14px; color:#b45309; flex-wrap:wrap; }
+  .answer { font-weight:700; font-size:18px; color:#78350f; }
+  .cur { font-family: Consolas, monospace; font-weight:700; font-size:17px; color:#b45309; }
+
+  .explain { background:#fffbeb; border-left:5px solid #f59e0b; border-radius:9px; padding:15px 18px; min-height:170px; }
+  .explain-title { font-weight:700; color:#b45309; margin-bottom:8px; font-size:15.5px; }
+  .explain-body { line-height:1.85; font-size:14px; color:#334155; }
+  .explain-body b { color:#dc2626; }
+  .explain-body .k { background:#fff; border:1px solid #fde68a; padding:1px 6px;
+                     border-radius:4px; color:#92400e; font-family:monospace; }
+  .explain-body .ok { color:#059669; font-weight:700; }
+
+  .legend { display:flex; gap:13px; justify-content:center; flex-wrap:wrap; margin-top:12px; font-size:12.5px; color:#b45309; }
+  .legend i { display:inline-block; width:13px; height:13px; border-radius:3px; margin-right:5px; vertical-align:-2px; border:1.5px solid; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>n 个 1 · 动画精讲</h1>
+  <p class="subtitle">秦九韶（Horner）：不要去造 11…1 这个巨数，只留住它除以 m 的余数</p>
+
+  <div class="controls">
+    <button class="primary" onclick="loadSample()">载入题面样例（m = 3, 1111, 2023）</button>
+    <textarea id="rawInput" placeholder="粘贴 OJ 输入：第 1 行 T，随后 T 个 m（也可以直接写一个 m）"></textarea>
+    <button class="primary" onclick="loadCustom()">载入自定义</button>
+  </div>
+  <div class="controls">
+    <button onclick="prevStep()">◀ 上一步</button>
+    <button class="primary" onclick="togglePlay()" id="btnPlay">▶ 播放</button>
+    <button onclick="nextStep()">下一步 ▶</button>
+    <button onclick="reset()">↻ 重置</button>
+    <button onclick="jumpEnd()">⏭ 直接看答案</button>
+    <select id="playSpeed" onchange="changeSpeed()">
+      <option value="1200">慢速</option>
+      <option value="450" selected>正常</option>
+      <option value="120">快速</option>
+    </select>
+  </div>
+  <div class="error" id="errorBox"></div>
+  <div class="picks" id="mPick"></div>
+
+  <div class="main">
+    <div class="left">
+      <div class="stripwrap">
+        <span class="badge" id="lenBadge">当前 Aₙ = —</span>
+        <div class="digits" id="digits"></div>
+      </div>
+      <div class="formula" id="formula">点上面「载入题面样例」开始</div>
+      <div class="statusbar">
+        <span id="stepCounter">步骤 0 / 0</span>
+        <span>当前余数：<span class="cur" id="rBox">—</span></span>
+        <span>答案 n：<span class="answer" id="answerBox">—</span></span>
+      </div>
+    </div>
+    <div class="right">
+      <div style="font-size:13px;color:#b45309;margin-bottom:6px;font-weight:700;">
+        余数表（n → r = Aₙ mod m）
+      </div>
+      <table class="rem" id="remTable"></table>
+      <div style="font-size:12px;color:#64748b;margin-top:8px;line-height:1.6;">
+        r 一旦变成 <b style="color:#059669">0</b>，就说明这一串 1 被 m 整除了 ——
+        那个 n 就是答案。整个过程**只保留余数**，所以永远不用去存那个上千位的巨数。
+      </div>
+    </div>
+  </div>
+
+  <div class="explain">
+    <div class="explain-title" id="stepTitle">点上面「载入题面样例」开始</div>
+    <div class="explain-body" id="stepDetail">
+      题目：给定 m（与 10 互质），求最小的 n，使 11…1（n 个 1）能被 m 整除。
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:#fffbeb;border-color:#fcd34d"></i>已经添上的 1</span>
+    <span><i style="background:#f59e0b;border-color:#b45309"></i>这一步刚添的 1（位数太多时它落在省略区，看不到）</span>
+    <span><i style="background:#f3f4f6;border-color:#d1d5db"></i>省略的位数</span>
+    <span><i style="background:#10b981;border-color:#047857"></i>整除（答案）</span>
+  </div>
+</div>
+
+<script>
+/* ============ 全局状态 ============ */
+var SAMPLE_TEXT = "3\n3\n1111\n2023\n";
+var BIGINT_LIMIT = 20000;      // 真值核对的最大位数（m<10000 时 n 最坏 9972）
+
+var MS = [];        // 解析出来的所有 m
+var MI = 0;         // 当前 m 的序号
+var M = 0;          // 当前 m
+var DATA = null;    // computeAll(M) 的结果
+var STEPS = [];
+var stepIdx = 0;
+var playing = false, timer = null, duration = 450;
+
+/* ============ 解析输入 ============ */
+/* 返回 {ms, error, note}。
+   两种写法都吃：
+     * OJ 原文 "T 后跟 T 个 m"（例："3 / 3 / 1111 / 2023"）
+     * 直接一串 m（例："7" 或 "3 7 11"）
+   判别：第一个整数 t 且 token 总数正好 t+1 -> 按 T 组；否则全都当 m。 */
+function parseMs(text) {
+  var toks = String(text).split(/\s+/).filter(function (x) { return x.length; });
+  var ms = [], i, t;
+
+  function isInt(s) { return /^-?\d+$/.test(s); }
+  function bad(msg) { return { ms: [], error: msg, note: null }; }
+
+  if (!toks.length) return bad("什么都没输入");
+  for (i = 0; i < toks.length; i++) {
+    if (!isInt(toks[i])) return bad("第 " + (i + 1) + " 个数据不是整数：" + toks[i]);
+  }
+
+  var start = 0;
+  t = parseInt(toks[0], 10);
+  if (t > 0 && toks.length === t + 1) start = 1;      // 标准 OJ 原文：第 1 行是 T
+
+  for (i = start; i < toks.length; i++) {
+    var m = parseInt(toks[i], 10);
+    if (m <= 0) return bad("m 必须 > 0，这里出现 " + m);
+    if (gcd(m, 10) !== 1) {
+      return bad("m=" + m + " 与 10 不互质（gcd≠1）—— 这样的 m 根本无解：" +
+                 "11…1 恒为奇数、末位不是 0 也不是 5");
+    }
+    if (m > 1000000) return bad("m=" + m + " 太大，画不动也算不动（上限 1000000）");
+    ms.push(m);
+  }
+  if (!ms.length) return bad("没有解析到任何 m");
+
+  var note = (start === 1)
+    ? "按 OJ 原文识别：第 1 行 " + t + " 是组数，后面 " + ms.length + " 个 m"
+    : "没看到组数行，按" + ms.length + "个 m 处理";
+  return { ms: ms, error: null, note: note };
+}
+
+function gcd(a, b) { while (b) { var t = a % b; a = b; b = t; } return a; }
+
+/* ============ 算法本体（秦九韶逐位取余） ============ */
+/* 返回 {n, rows, limit}：
+     n     —— 最小的 n 使 Aₙ ≡ 0 (mod m)；无解为 null
+     rows  —— 每一步的 {n, r}，rows[k-1] 就是 r_k
+     limit —— 循环上界（阶必整除 φ(9m) ≤ 9m） */
+function computeAll(m) {
+  var rows = [];
+  var r = 0;
+  var limit = 9 * m + 2;
+  var found = null;
+  var n = 0;
+  while (n < limit) {
+    n++;
+    var prevR = r;
+    r = (r * 10 + 1) % m;
+    rows.push({ n: n, r: r });
+    if (r === 0) { found = n; break; }
+  }
+  return { n: found, rows: rows, limit: limit };
+}
+
+/* ============ 步骤序列（步数太多就掐头去尾） ============ */
+var HEAD_STEPS = 60, TAIL_STEPS = 40;
+
+function buildSteps(data) {
+  var s = [{ type: "intro" }];
+  var total = data.rows.length;
+  var i;
+  if (total <= HEAD_STEPS + TAIL_STEPS + 1) {
+    for (i = 0; i < total; i++) s.push({ type: "step", n: i + 1 });
+  } else {
+    for (i = 0; i < HEAD_STEPS; i++) s.push({ type: "step", n: i + 1 });
+    s.push({ type: "skip", from: HEAD_STEPS + 1, to: total - TAIL_STEPS });
+    for (i = total - TAIL_STEPS; i < total; i++) s.push({ type: "step", n: i + 1 });
+  }
+  s.push({ type: "done" });
+  return s;
+}
+
+/* ============ 重放到第 k 步（纯函数，可任意跳转） ============ */
+function stateAt(k) {
+  var cur = STEPS[Math.min(k, STEPS.length - 1)];
+  var maxN = 0, i, st;
+  for (i = 0; i <= k && i < STEPS.length; i++) {
+    st = STEPS[i];
+    if (st.type === "step") maxN = st.n;
+    else if (st.type === "skip") maxN = st.to;
+  }
+  /* 当前这一步展示的信息（cur 是 step 时才有"刚添的 1"） */
+  var shown = null, prevR = null;
+  if (cur.type === "step") {
+    shown = DATA.rows[cur.n - 1];
+    prevR = (cur.n >= 2) ? DATA.rows[cur.n - 2].r : 0;
+  }
+  var upto = maxN;
+  var lastR = (upto >= 1) ? DATA.rows[upto - 1].r : null;
+  return { cur: cur, upto: upto, lastR: lastR, shown: shown, prevR: prevR,
+           answer: (cur.type === "done" ? DATA.n : null) };
+}
+
+/* ============ 真值核对（BigInt 老实构造 11…1） ============ */
+/* 【注意】 最小性必须**每一步都核**，不能只比 A_{n-1}：
+   反例 m=3、n=6 —— A_6=111111 能被 3 整除、A_5=11111 不能，
+   可真正的最小值是 **3**（A_3=111=3×37）。只比前一项的"局部最小"是**名不副实的断言**，
+   会对着一个错答案报 OK（本仓库陷阱 20/26）。
+   所以这里一路构造到 n，记下第一个能被整除的位置 firstHit，要求 firstHit === n。 */
+function bigintCheck(m, n) {
+  if (typeof BigInt !== "function") return { ok: null, why: "这个浏览器不支持 BigInt，跳过真值核对" };
+  if (n > BIGINT_LIMIT) return { ok: null, why: "n = " + n + " 超过 " + BIGINT_LIMIT + " 位，跳过真值核对" };
+  try {
+    var v = BigInt(0), bigM = BigInt(m), firstHit = null, i;
+    for (i = 1; i <= n; i++) {
+      v = v * BigInt(10) + BigInt(1);
+      if (firstHit === null && (v % bigM) === BigInt(0)) firstHit = i;
+    }
+    var div = (v % bigM) === BigInt(0);
+    return { ok: (div && firstHit === n), div: div, firstHit: firstHit,
+             digits: n, why: null };
+  } catch (e) {
+    return { ok: null, why: "BigInt 计算失败：" + e };
+  }
+}
+
+/* ============ 渲染 ============ */
+function render() {
+  var st = stateAt(stepIdx);
+  var rows = DATA.rows;
+  document.getElementById("lenBadge").textContent =
+    "当前 Aₙ = " + (st.upto >= 1 ? st.upto + " 个 1" : "—");
+
+  /* ---- 数字条 ---- */
+  var dbox = document.getElementById("digits");
+  var SHOW = 16;
+  var upto = st.upto;
+  var html = [], i;
+  if (upto === 0) {
+    html.push('<div class="digit more">还没有 1</div>');
+  } else {
+    var shownCount = Math.min(upto, SHOW);
+    for (i = 0; i < shownCount; i++) {
+      html.push('<div class="digit">1</div>');
+    }
+    if (upto > SHOW) {
+      html.push('<div class="digit more">… 还有 ' + (upto - SHOW) + " 位</div>");
+    }
+    /* 只有"位数全都画在画布上"时，最后一格才**就是**刚添的那个 1，高亮它；
+       位数更多时，刚添的 1 落在省略号那一片里、画布上根本看不到 —— 就不高亮，
+       图例也是这么写的。
+       【注意】原先这里还有一句 `i === upto - 1 && upto > SHOW - 1` 的 isNew 判据：
+       i 最多只到 SHOW-1，所以它**恒为假**，是死代码（审计用变异测试实测打不掉）；
+       更要命的是它让图例承诺了一个永不出现的高亮。已删。 */
+    if (st.cur.type === "step" && upto <= SHOW) {
+      html[html.length - 1] = '<div class="digit new">1</div>';
+    }
+  }
+  dbox.innerHTML = html.join("");
+
+  /* ---- 公式卡 ---- */
+  var fb = document.getElementById("formula");
+  if (st.cur.type === "intro") {
+    fb.innerHTML = "初始 " + kk("r = 0") + "（还没有任何 1）。接下来每添一个 1：" +
+                   kk("r ← (10·r + 1) mod m") + "，看它什么时候变成 0。";
+  } else if (st.cur.type === "skip") {
+    fb.innerHTML = "中间 " + kk("n = " + st.cur.from + " … " + st.cur.to) +
+                   " 这几千步同款操作，直接跳过（点「下一步」继续看尾巴）。";
+  } else if (st.cur.type === "step") {
+    var nn = st.cur.n, r = st.shown.r, pr = st.prevR;
+    var zero = (r === 0);
+    fb.innerHTML =
+      "<span class='big'>" + kk("r_" + nn + " = (10 × " + (nn === 1 ? "0" : "r_" + (nn - 1)) +
+      " + 1) mod " + M) + "</span><br>" +
+      "&nbsp;&nbsp;= (10 × " + pr + " + 1) mod " + M + " = " +
+      (10 * pr + 1) + " mod " + M + " = " +
+      "<b class='" + (zero ? "zero" : "") + "'>" + r + "</b>" +
+      (zero ? "&nbsp;&nbsp;<span class='zero'>← 整除了！答案 n = " + nn + "</span>"
+            : "&nbsp;&nbsp;（还不是 0，继续添 1）");
+  } else {
+    var bc = bigintCheck(M, DATA.n);
+    fb.innerHTML = "<span class='big'>扫完，最小 n = " + kk(DATA.n) + "</span><br>" +
+      "真值核对（BigInt 老实构造 11…1，1 位一路除到 " + DATA.n + " 位）：" +
+      (bc.ok === true
+        ? "<span class='ok'>第一个能被 " + M + " 整除的位置正好是 " + bc.firstHit +
+          "，与答案一致 —— OK</span>"
+        : bc.ok === false
+          ? "<b>对不上！div=" + bc.div + "，第一个能整除的是 " + bc.firstHit + "</b>"
+          : "（" + bc.why + "）");
+  }
+
+  /* ---- 余数表（复用判据：行数、当前 m、以及是否要显示"省略"行）---- */
+  var box = document.getElementById("remTable");
+  var view = remView(rows, st);
+  if (box._rows === undefined || box._m !== M || box._rows.length !== view.length) {
+    var out = ['<tr><th>n</th><th>r = Aₙ mod m</th></tr>'];
+    for (i = 0; i < view.length; i++) {
+      out.push('<tr><td>—</td><td>—</td></tr>');
+    }
+    box.innerHTML = out.join("");
+    box._rows = [];
+    for (i = 0; i < view.length; i++) box._rows.push(box.rows[i + 1]);
+    box._m = M;
+  }
+  for (i = 0; i < view.length; i++) {
+    var tr = box._rows[i];
+    var v = view[i];
+    tr.className = (v.kind === "gap") ? "gap" : (v.kind === "hit" ? "hit" : (v.kind === "cur" ? "cur" : ""));
+    tr.cells[0].textContent = (v.kind === "gap") ? "…" : v.n;
+    tr.cells[1].textContent = (v.kind === "gap") ? "共 " + v.count + " 步" : v.r;
+  }
+
+  document.getElementById("stepCounter").textContent =
+    "步骤 " + Math.min(stepIdx + 1, STEPS.length) + " / " + STEPS.length;
+  document.getElementById("rBox").textContent = (st.lastR === null ? "—" : st.lastR);
+  document.getElementById("answerBox").textContent = (st.answer === null ? "—" : st.answer);
+  updateExplain(st);
+}
+
+/* 余数表该显示哪几行：当前步附近 + 命中的那一行 */
+function remView(rows, st) {
+  var VIEW = 14, out = [], i;
+  var center = (st.cur.type === "step") ? st.cur.n : st.upto;
+  if (center <= 0) {
+    return [{ kind: "gap", count: 0 }];
+  }
+  var head = Math.max(1, center);
+  var start = Math.max(1, head - VIEW + 1);
+  if (start > 1) out.push({ kind: "gap", count: start - 1 });
+  for (i = start; i <= head; i++) {
+    var kind = "old";
+    if (i === head && st.cur.type === "step") kind = "cur";
+    if (rows[i - 1].r === 0) kind = "hit";
+    out.push({ kind: kind, n: i, r: rows[i - 1].r });
+  }
+  return out;
+}
+
+function kk(x) { return '<span class="k">' + esc(x) + '</span>'; }
+function esc(x) {
+  return String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/* ============ 解说 ============ */
+function updateExplain(st) {
+  var T = document.getElementById("stepTitle");
+  var D = document.getElementById("stepDetail");
+  var cur = st.cur;
+
+  if (cur.type === "intro") {
+    T.textContent = "① 这道题要什么";
+    D.innerHTML =
+      "求最小的 n，使 " + kk("A_n = 11…1（n 个 1）") + " 能被 m 整除。<br>" +
+      "m = " + kk(M) + "。注意 m 与 10 互质 —— 这条保证了答案一定存在。<br>" +
+      "<b>难点是别去构造那个数</b>：n 可能上千位，真造出来又慢又占地方。" +
+      "秦九韶的思路是——**只用余数**：把 A_n 看成「上一步的结果乘 10 再加 1」，" +
+      "而取模可以在每一步都做，结果完全一样。";
+  } else if (cur.type === "skip") {
+    T.textContent = "③ 中间这几千步长得一样，跳过";
+    D.innerHTML =
+      "n 从 " + cur.from + " 到 " + cur.to + " 一共 " + (cur.to - cur.from + 1) +
+      " 步，每步都是同一个动作（乘 10 加 1 再取模），画出来也看不出新东西。<br>" +
+      "真正有意思的是<b>尾巴</b>：余数什么时候第一次变成 0。点「下一步」继续。";
+  } else if (cur.type === "step") {
+    var nn = cur.n, r = st.shown.r, pr = st.prevR;
+    T.textContent = "② 添上第 " + nn + " 个 1：" + (r === 0 ? "余数变成 0 了！" : "余数 r = " + r);
+    D.innerHTML =
+      "把上一个余数 " + kk("r_" + (nn - 1) + " = " + pr) + " 乘 10 再加 1，" +
+      "得到 " + kk("10 × " + pr + " + 1 = " + (10 * pr + 1)) + "；" +
+      "再对 " + M + " 取余：" + kk((10 * pr + 1) + " mod " + M + " = " + r) + "。<br>" +
+      (r === 0
+        ? "<span class='ok'>余数第一次变成 0</span> —— 这说明 " + kk("A_" + nn) +
+          " 恰好能被 m 整除，而且<b>前面每一步都不是 0</b>，所以 n = " + nn + " 就是最小的。<br>" +
+          "（为什么「前面都不是 0」就等于最小？因为 r_k = 0 正是 A_k 被整除的充要条件，" +
+          "第一个出现的就是最小的。）"
+        : "还不是 0，继续添下一个 1。<br>为什么这样算和「真去除」结果一样？" +
+          "因为 " + kk("A_n = 10·A_{n-1} + 1") + "，而对任意整数 x 都有 " +
+          kk("(10x + 1) mod m = (10·(x mod m) + 1) mod m") + " —— " +
+          "<b>取模可以在每一步就做</b>，不必等到最后。");
+  } else {
+    var bc = bigintCheck(M, DATA.n);
+    T.textContent = "④ 答案出来了：" + DATA.n;
+    D.innerHTML =
+      "m = " + kk(M) + " 时，最小 n = <b>" + DATA.n + "</b>（一共 " + DATA.rows.length +
+      " 步，最后一次余数才是 0）。<br><br>" +
+      "<b>自校验：</b>用 BigInt 老实构造出 11…1，从 1 位一路做到 " + DATA.n +
+      " 位，每做一步就除一次 —— " +
+      (bc.ok === true
+        ? "<span class='ok'>第一个能被 " + M + " 整除的位置正好是 " + bc.firstHit +
+          "，与答案一致，ALL OK</span>"
+        : bc.ok === false
+          ? "<b>对不上（div=" + bc.div + "，第一个能整除的是 " + bc.firstHit +
+            "，而答案是 " + DATA.n + "）</b>"
+          : "（" + bc.why + "）") + "<br><br>" +
+      "<b>复杂度：</b>每步一次乘法一次取模，共 n ≤ φ(9m) ≤ 9m 步 —— " +
+      "m<10000 时最坏是 m = 9981 得 n = 9972。时间 <b>O(n)</b>，空间 <b>O(1)</b>" +
+      "（不存那个巨数，只留一个余数）。";
+  }
+}
+
+/* ============ 载入 / 选择 ============ */
+function loadSample() {
+  document.getElementById("rawInput").value = SAMPLE_TEXT;
+  var r = parseMs(SAMPLE_TEXT);
+  MS = r.ms; MI = 0;
+  setError(""); buildPick(); load();
+}
+
+function loadCustom() {
+  var r = parseMs(document.getElementById("rawInput").value);
+  if (!r.ms.length) {
+    setError("输入有问题：" + (r.error || "没有解析到 m") + "（画布仍是上一次的）");
+    return;
+  }
+  MS = r.ms; MI = 0;
+  buildPick(); load();
+  setError(r.note ? ("提示：" + r.note) : "");
+}
+
+function buildPick() {
+  var s = [], i;
+  for (i = 0; i < MS.length; i++) {
+    s.push('<button class="' + (i === MI ? "on" : "") + '" onclick="pickM(' + i +
+           ')">m = ' + MS[i] + '</button>');
+  }
+  document.getElementById("mPick").innerHTML = s.join("");
+}
+
+function pickM(i) {
+  if (i < 0 || i >= MS.length) return;
+  MI = i; buildPick(); load();
+}
+
+function load() {
+  M = MS[MI];
+  DATA = computeAll(M);
+  STEPS = buildSteps(DATA);
+  stepIdx = 0;
+  stopPlay();
+  render();
+}
+
+function setError(msg) { document.getElementById("errorBox").textContent = msg || ""; }
+
+/* ============ 播放控制 ============ */
+function reset() { if (STEPS.length) { stepIdx = 0; stopPlay(); render(); } }
+function nextStep() {
+  if (!STEPS.length) return;
+  if (stepIdx < STEPS.length - 1) { stepIdx++; render(); } else stopPlay();
+}
+function prevStep() {
+  if (!STEPS.length) return;
+  if (stepIdx > 0) { stepIdx--; stopPlay(); render(); }
+}
+function jumpEnd() {
+  if (!STEPS.length) return;
+  stepIdx = STEPS.length - 1; stopPlay(); render();
+}
+function togglePlay() {
+  if (!STEPS.length) return;
+  if (playing) stopPlay();
+  else {
+    if (stepIdx >= STEPS.length - 1) stepIdx = 0;
+    playing = true;
+    document.getElementById("btnPlay").textContent = "⏸ 暂停";
+    tick();
+  }
+}
+function tick() {
+  if (!playing) return;
+  render();
+  if (stepIdx >= STEPS.length - 1) { stopPlay(); return; }
+  timer = setTimeout(function () { stepIdx++; tick(); }, duration);
+}
+function stopPlay() {
+  playing = false;
+  if (timer) { clearTimeout(timer); timer = null; }
+  document.getElementById("btnPlay").textContent = "▶ 播放";
+}
+function changeSpeed() { duration = parseInt(document.getElementById("playSpeed").value, 10); }
+
+loadSample();
+</script>
+</body>
+</html>

@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>车厢调度 · 栈与卡特兰数</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #fff8e1 0%, #ffe0b2 100%);
+    min-height: 100vh; padding: 18px; color: #4e342e;
+  }
+  .container {
+    max-width: 1180px; margin: 0 auto; background: rgba(255,255,255,0.96);
+    border-radius: 16px; box-shadow: 0 8px 32px rgba(120,70,20,0.18); padding: 24px;
+  }
+  h1 { text-align: center; color: #4e342e; font-size: 25px; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: #8d6e63; font-size: 13.5px; margin-bottom: 18px; }
+
+  .controls { display:flex; gap:9px; justify-content:center; align-items:center;
+              flex-wrap:wrap; margin-bottom:10px; }
+  input#inp {
+    width: 110px; padding: 8px 12px; border-radius: 8px; border: 1px solid #ffcc80;
+    font-size: 14px; font-family: Consolas, monospace; color:#4e342e; background:#fff;
+    text-align:center;
+  }
+  input#inp:focus { outline:none; border-color:#f57c00; box-shadow:0 0 0 3px rgba(245,124,0,.18); }
+  button {
+    padding: 8px 14px; border-radius: 8px; border: 1px solid #ffcc80;
+    background:#fff; color:#e65100; font-size:14px; cursor:pointer; transition: all .18s;
+  }
+  button:hover { background:#ffb74d; color:#fff; transform: translateY(-1px); }
+  button.primary { background:#ef6c00; color:#fff; border-color:#e65100; }
+  button.primary:hover { background:#e65100; }
+  button:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+  button.mini { padding:5px 10px; font-size:12.5px; }
+
+  .presets { text-align:center; margin-bottom:12px; font-size:13px; color:#8d6e63;
+             display:flex; gap:6px; justify-content:center; flex-wrap:wrap; align-items:center; }
+  .error { color:#c62828; text-align:center; min-height:20px; margin-bottom:8px; font-size:14px; }
+
+  /* ---------- 三栏舞台 ---------- */
+  .stage { display: flex; align-items: stretch; justify-content: center;
+           gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .lane { flex: 1 1 0; min-width: 190px; border: 1px dashed #ffcc80; border-radius: 12px;
+          background: #fffdf7; padding: 8px 10px 10px; }
+  .lane-title { font-size: 12.5px; color: #8d6e63; text-align: center; margin-bottom: 8px;
+                font-weight: 700; letter-spacing: 1px; }
+  .flow { display:flex; align-items:center; justify-content:center; flex-direction:column;
+          font-size:12px; color:#a1887f; min-width: 58px; }
+  .flow .big { font-size: 18px; line-height: 22px; }
+
+  .row { display: flex; gap: 6px; justify-content: center; align-items: center;
+         min-height: 46px; flex-wrap: wrap; }
+  .stackcol { display: flex; flex-direction: column-reverse; gap: 6px;
+              justify-content: flex-start; align-items: center; min-height: 46px;
+              padding-bottom: 4px; border-bottom: 3px solid #bcaaa4;
+              width: 100%; max-width: 120px; margin: 0 auto; }
+  .stackcol .hint { font-size: 11.5px; color:#bcaaa4; }
+
+  .car {
+    width: 38px; height: 38px; line-height: 34px; text-align: center;
+    border-radius: 8px; border: 2px solid #a1887f; background: #efebe9; color: #5d4037;
+    font-weight: 700; font-size: 16px; font-family: Consolas, monospace;
+    transition: transform .18s, background .18s, border-color .18s, color .18s;
+  }
+  .car.fresh { animation: pop .32s ease-out; }
+  @keyframes pop {
+    0%   { transform: scale(.3); opacity: 0; }
+    70%  { transform: scale(1.18); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  .car.in-stack { background:#d7ccc8; border-color:#8d6e63; }
+  .car.out { background:#a5d6a7; border-color:#43a047; color:#1b5e20; }
+  .car.hot { background:#ffb74d; border-color:#ef6c00; color:#fff;
+             transform: translateY(-4px) scale(1.1);
+             box-shadow: 0 6px 14px rgba(239,108,0,.35); }
+
+  /* ---------- 状态条 ---------- */
+  .stepbar { text-align:center; font-size:14px; min-height: 46px; padding: 11px 14px;
+             background:#fff3e0; border-radius: 10px; border-left: 5px solid #ffb74d;
+             color:#6d4c41; margin-bottom: 12px; line-height: 1.6; }
+  .stepbar b { color:#e65100; }
+
+  .panel { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:14px; }
+  .stat { min-width: 132px; padding: 9px 14px; border-radius: 10px;
+          background:#fff8e1; border:1px solid #ffcc80; text-align:center; }
+  .stat .lbl { display:block; font-size:12px; color:#8d6e63; margin-bottom:2px; }
+  .stat .val { font-size:20px; font-weight:700; color:#4e342e; font-family: Consolas, monospace; }
+  .stat.ans { background:#ef6c00; border-color:#e65100; }
+  .stat.ans .lbl, .stat.ans .val { color:#fff; }
+
+  /* ---------- 全部输出序列 ---------- */
+  .seqbox { border:1px solid #ffe0b2; border-radius:10px; padding:12px 16px;
+            background:#fffdf7; margin-bottom:14px; font-size:13.5px; color:#6d4c41; }
+  .seqbox .ttl { font-weight:700; color:#4e342e; margin-bottom:6px; }
+  .seqbox .seq { font-family: Consolas, monospace; display:inline-block;
+                 background:#fff3e0; border:1px solid #ffe0b2; border-radius:6px;
+                 padding:2px 8px; margin:3px 5px 3px 0; }
+
+  .formula { background:#fffdf7; border:1px solid #ffe0b2; border-radius:10px;
+             padding:12px 16px; font-size:13.5px; line-height:1.85; color:#6d4c41; }
+  .formula .ttl { font-weight:700; color:#4e342e; margin-bottom:4px; }
+  .formula code { font-family: Consolas, monospace; background:#fff3e0;
+                  padding:1px 5px; border-radius:4px; color:#e65100; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>车厢调度 · 栈能得到多少种输出序列</h1>
+  <p class="subtitle">
+    1..n 依次进站，任意时刻可让车头出站；<b>出站顺序有多少种</b>？答案就是第 n 个<b>卡特兰数</b>
+  </p>
+
+  <div class="controls">
+    <span style="font-size:13.5px;color:#8d6e63;">n =</span>
+    <input id="inp" type="text" value="3" maxlength="3">
+    <button id="btnLoad" class="primary">载入</button>
+    <button id="btnNext">下一步</button>
+    <button id="btnAuto">自动播放</button>
+    <button id="btnReset">重置</button>
+  </div>
+
+  <div class="presets">
+    <span>预设：</span>
+    <button class="mini" data-n="3">n=3 → 5</button>
+    <button class="mini" data-n="4">n=4 → 14</button>
+    <button class="mini" data-n="5">n=5 → 42</button>
+    <button class="mini" data-n="8">n=8 → 1430</button>
+    <button class="mini" data-n="18">n=18 → 477638700</button>
+  </div>
+
+  <div class="error" id="err"></div>
+
+  <div class="stage">
+    <div class="lane">
+      <div class="lane-title">待处理序列</div>
+      <div class="row" id="inputRow"></div>
+    </div>
+    <div class="flow">
+      <div class="big">→</div><div>push</div>
+      <div class="big">←</div><div>pop</div>
+    </div>
+    <div class="lane">
+      <div class="lane-title">栈 A（栈顶在上）</div>
+      <div class="stackcol" id="stackCol"></div>
+    </div>
+    <div class="flow">
+      <div class="big">→</div><div>pop</div>
+      <div class="big">←</div><div>push</div>
+    </div>
+    <div class="lane">
+      <div class="lane-title">输出序列</div>
+      <div class="row" id="outputRow"></div>
+    </div>
+  </div>
+
+  <div class="stepbar" id="stepText">
+    点「下一步」开始逐步演示一条 push/pop 操作序列；也可以直接「自动播放」。
+  </div>
+
+  <div class="panel">
+    <div class="stat"><span class="lbl">当前操作</span>
+      <span class="val" id="vOp">–</span></div>
+    <div class="stat"><span class="lbl">已 push / 已 pop</span>
+      <span class="val" id="vCount">0 / 0</span></div>
+    <div class="stat ans"><span class="lbl">输出序列总数 Cat(n)</span>
+      <span class="val" id="vAns">–</span></div>
+  </div>
+
+  <div class="seqbox" id="seqBox"></div>
+
+  <div class="formula">
+    <div class="ttl">为什么答案就是卡特兰数？</div>
+    <div>
+      整个过程不过是 <b>n 次 push 和 n 次 pop</b> 排成了一列，唯一的约束是
+      <code>任何时刻 pop 的次数不能超过 push 的次数</code>（栈空就弹不出东西）。<br>
+      满足这个约束的操作序列数，正是第 n 个卡特兰数：<br>
+      <code>Cat(n) = C(2n, n) / (n+1)</code>，也有整数递推
+      <code>Cat(k) = Cat(k−1) × (4k − 2) / (k + 1)</code>（从 Cat(0)=1 起）。<br>
+      例如 <code>Cat(3) = 5</code>：可得到的输出序列恰好是
+      <b>123、132、213、231、321</b> 这五种；像 <b>312</b> 就做不到 ——
+      想让 3 第一个出站，就得先把 1、2 压进栈里；3 出栈之后栈顶是 2，
+      <b>2 一定比 1 先出</b>，所以只能得到 321。
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ==================================================================
+ * 纯逻辑部分 —— 不碰 DOM，可用 node 抽出后直接实跑断言
+ * ================================================================== */
+
+/* 第 n 个卡特兰数：Cat(0)=1，Cat(k)=Cat(k-1)*(4k-2)/(k+1) */
+function catalan(n) {
+  var c = 1;
+  for (var k = 1; k <= n; k++) {
+    c = c * (4 * k - 2) / (k + 1);
+  }
+  return c;
+}
+
+/* 一次合法的 push/pop 操作序列的随机生成（seed 可选，便于测试复现） */
+function randomOps(n, rand) {
+  var r = rand || Math.random;
+  var ops = [];
+  var pushed = 0;
+  var inStack = 0;
+  for (var step = 0; step < 2 * n; step++) {
+    var canPush = (pushed < n);
+    var canPop = (inStack > 0);
+    var doPush;
+    if (canPush && canPop) {
+      doPush = (r() < 0.5);
+    } else {
+      doPush = canPush;
+    }
+    if (doPush) {
+      ops.push('push');
+      pushed++;
+      inStack++;
+    } else {
+      ops.push('pop');
+      inStack--;
+    }
+  }
+  return ops;
+}
+
+/* 按操作序列逐步模拟，返回每一步的状态快照 */
+function simulate(n, ops) {
+  var nextNum = 1;
+  var stack = [];
+  var out = [];
+  var steps = [];
+
+  for (var i = 0; i < ops.length; i++) {
+    var op = ops[i];
+    var moved = null;
+    if (op === 'push') {
+      moved = nextNum;
+      stack.push(nextNum);
+      nextNum++;
+    } else {
+      moved = stack.pop();          /* 栈空则 moved 为 undefined，正常序列不会发生 */
+      out.push(moved);
+    }
+    /* 待处理序列 = 还没 push 过的那一段，就在循环里顺手取走。
+       别事后另算一遍 —— 那样很容易差一步，把 nextNum 记成 push 之前的值。 */
+    var rem = [];
+    for (var v = nextNum; v <= n; v++) {
+      rem.push(v);
+    }
+    steps.push({
+      index: i,
+      op: op,
+      moved: moved,
+      remainder: rem,
+      stack: stack.slice(),
+      out: out.slice(),
+      note: (op === 'push')
+        ? ('把 ' + moved + ' 压入栈')
+        : ('把 ' + moved + ' 弹出并接到输出序列末尾')
+    });
+  }
+
+  return steps;
+}
+
+/* 枚举 n 较小时的全部输出序列（字典序），用于"总数"的直观展示 */
+function enumerateSequences(n) {
+  var result = [];
+
+  function dfs(nextNum, stack, out) {
+    if (out.length === n) {
+      result.push(out.slice());
+      return;
+    }
+    if (nextNum <= n) {
+      stack.push(nextNum);
+      dfs(nextNum + 1, stack, out);
+      stack.pop();
+    }
+    if (stack.length > 0) {
+      var v = stack.pop();
+      out.push(v);
+      dfs(nextNum, stack, out);
+      out.pop();
+      stack.push(v);
+    }
+  }
+
+  dfs(1, [], []);
+  return result;
+}
+
+/* 校验一个输出排列能否由栈生成（贪心模拟），供测试断言用 */
+function stackGenerable(target, n) {
+  var stack = [];
+  var nextNum = 1;
+  for (var i = 0; i < target.length; i++) {
+    var x = target[i];
+    while (nextNum <= n && (stack.length === 0 || stack[stack.length - 1] !== x)) {
+      stack.push(nextNum);
+      nextNum++;
+    }
+    if (stack.length > 0 && stack[stack.length - 1] === x) {
+      stack.pop();
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
+
+/* 输入校验：1..18 的十进制整数 */
+function isValidN(s) {
+  if (!s) return false;
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charAt(i);
+    if (c < '0' || c > '9') return false;
+  }
+  var n = parseInt(s, 10);
+  return (n >= 1 && n <= 18);
+}
+
+/* ==================================================================
+ * 渲染 / 交互部分 —— 只在浏览器里跑（node 下 document 未定义，会跳过）
+ * ================================================================== */
+
+var DEMO_MAX = 10;      /* 逐步演示最多到 10（再多看不过来） */
+var LIST_MAX = 4;       /* 列出全部输出序列最多到 4（14 条） */
+
+var state = { n: 0, steps: [], cursor: 0, timer: null };
+
+function clearTimer() {
+  if (state.timer !== null) {
+    clearInterval(state.timer);
+    state.timer = null;
+  }
+  var btn = document.getElementById('btnAuto');
+  if (btn) { btn.textContent = '自动播放'; }
+}
+
+function setError(msg) {
+  document.getElementById('err').textContent = msg;
+}
+
+function clearStage() {
+  document.getElementById('inputRow').innerHTML = '';
+  document.getElementById('stackCol').innerHTML = '';
+  document.getElementById('outputRow').innerHTML = '';
+  document.getElementById('seqBox').innerHTML = '';
+  state.n = 0;
+  state.steps = [];
+  state.cursor = 0;
+  document.getElementById('vOp').textContent = '–';
+  document.getElementById('vCount').textContent = '0 / 0';
+  document.getElementById('vAns').textContent = '–';
+  document.getElementById('btnNext').disabled = true;
+}
+
+function makeCar(num, cls, fresh) {
+  var d = document.createElement('div');
+  d.className = 'car' + (cls ? ' ' + cls : '') + (fresh ? ' fresh' : '');
+  d.textContent = String(num);
+  return d;
+}
+
+function renderStep(step, fresh) {
+  var inputRow = document.getElementById('inputRow');
+  var stackCol = document.getElementById('stackCol');
+  var outputRow = document.getElementById('outputRow');
+
+  inputRow.innerHTML = '';
+  for (var i = 0; i < step.remainder.length; i++) {
+    inputRow.appendChild(makeCar(step.remainder[i], '', false));
+  }
+  if (step.remainder.length === 0) {
+    var e1 = document.createElement('span');
+    e1.className = 'hint';
+    e1.textContent = '（空）';
+    inputRow.appendChild(e1);
+  }
+
+  stackCol.innerHTML = '';
+  for (var j = 0; j < step.stack.length; j++) {
+    var isTop = (j === step.stack.length - 1);
+    var hot = (fresh && step.op === 'push' && isTop);
+    stackCol.appendChild(makeCar(step.stack[j], 'in-stack' + (hot ? ' hot' : ''),
+                                 fresh && step.op === 'push' && isTop));
+  }
+  if (step.stack.length === 0) {
+    var e2 = document.createElement('span');
+    e2.className = 'hint';
+    e2.textContent = '（栈空）';
+    stackCol.appendChild(e2);
+  }
+
+  outputRow.innerHTML = '';
+  for (var k = 0; k < step.out.length; k++) {
+    var isLast = (k === step.out.length - 1);
+    var hot2 = (fresh && step.op === 'pop' && isLast);
+    outputRow.appendChild(makeCar(step.out[k], 'out' + (hot2 ? ' hot' : ''),
+                                  fresh && step.op === 'pop' && isLast));
+  }
+}
+
+function showSeqList(n) {
+  var box = document.getElementById('seqBox');
+  box.innerHTML = '';
+  var ttl = document.createElement('div');
+  ttl.className = 'ttl';
+  if (n <= LIST_MAX) {
+    var seqs = enumerateSequences(n);
+    ttl.textContent = 'n=' + n + ' 时所有可能的输出序列，共 ' + seqs.length + ' 种：';
+    box.appendChild(ttl);
+    for (var i = 0; i < seqs.length; i++) {
+      var sp = document.createElement('span');
+      sp.className = 'seq';
+      sp.textContent = seqs[i].join(' ');
+      box.appendChild(sp);
+    }
+  } else {
+    ttl.textContent = 'n=' + n + ' 时输出序列共 ' + catalan(n) + ' 种'
+      + '（n > ' + LIST_MAX + ' 太多，不逐条列出）。'
+      + '想看清有哪些，把 n 调到 4 以内。';
+    box.appendChild(ttl);
+  }
+}
+
+function loadN(raw) {
+  clearTimer();
+  /* 只去掉首尾空白。中间的空白**不能删** —— 删了会把 "1 2" 悄悄变成 12，
+     和 isValidN() 的口径也会打架（它认为 " 3" 是非法输入）。 */
+  var s = (raw || '').replace(/^\s+|\s+$/g, '');
+  if (!isValidN(s)) {
+    setError('请输入 1 到 18 之间的整数。');
+    clearStage();
+    return false;
+  }
+  setError('');
+
+  var n = parseInt(s, 10);
+  state.n = n;
+  state.cursor = 0;
+  document.getElementById('vAns').textContent = String(catalan(n));
+
+  if (n <= DEMO_MAX) {
+    state.steps = simulate(n, randomOps(n));
+    document.getElementById('btnNext').disabled = false;
+    document.getElementById('stepText').textContent =
+      'n = ' + n + '：已随机生成一条合法的 push/pop 操作序列（共 ' + (2 * n)
+      + ' 步）。点「下一步」逐步看车厢怎么走。';
+    renderStep({ remainder: rangeOf(n, 1), stack: [], out: [], op: 'init' }, false);
+  } else {
+    state.steps = [];
+    document.getElementById('btnNext').disabled = true;
+    document.getElementById('stepText').textContent =
+      'n = ' + n + ' 太大，不做逐步演示（最多演示 n = ' + DEMO_MAX + '）。'
+      + '右下角是它对应的答案 Cat(' + n + ')。';
+    document.getElementById('inputRow').innerHTML = '';
+    document.getElementById('stackCol').innerHTML = '';
+    document.getElementById('outputRow').innerHTML = '';
+  }
+
+  showSeqList(n);
+  renderCounts(0, 0);
+  document.getElementById('vOp').textContent = '–';
+  return true;
+}
+
+function rangeOf(n, from) {
+  var a = [];
+  for (var v = from; v <= n; v++) { a.push(v); }
+  return a;
+}
+
+function renderCounts(pushed, popped) {
+  document.getElementById('vCount').textContent = pushed + ' / ' + popped;
+}
+
+function stepOnce() {
+  if (state.cursor >= state.steps.length) return false;
+  var step = state.steps[state.cursor];
+  renderStep(step, true);
+
+  document.getElementById('vOp').textContent =
+    (step.op === 'push' ? 'push ' + step.moved : 'pop ' + step.moved);
+  var pushed = 0, popped = 0;
+  for (var i = 0; i <= state.cursor; i++) {
+    if (state.steps[i].op === 'push') { pushed++; } else { popped++; }
+  }
+  renderCounts(pushed, popped);
+
+  document.getElementById('stepText').textContent =
+    '第 ' + (state.cursor + 1) + ' / ' + state.steps.length + ' 步：' + step.note
+    + '。此时栈内自底向上是 [' + step.stack.join(', ') + ']'
+    + '，输出序列为 [' + step.out.join(' ') + ']。';
+
+  state.cursor++;
+  if (state.cursor >= state.steps.length) {
+    finish();
+    return false;
+  }
+  return true;
+}
+
+function finish() {
+  var n = state.n;
+  document.getElementById('stepText').textContent =
+    '演示完毕：得到的输出序列是 [' + state.steps[state.steps.length - 1].out.join(' ')
+    + ']。这只是 Cat(' + n + ') = ' + catalan(n) + ' 种中的一种 —— '
+    + '总共有 ' + catalan(n) + ' 条合法的 push/pop 序列。';
+  document.getElementById('btnNext').disabled = true;
+}
+
+function reset() {
+  clearTimer();
+  if (state.n === 0) return;
+  state.cursor = 0;
+  var n = state.n;
+  state.steps = simulate(n, randomOps(n));
+  renderStep({ remainder: rangeOf(n, 1), stack: [], out: [], op: 'init' }, false);
+  renderCounts(0, 0);
+  document.getElementById('vOp').textContent = '–';
+  document.getElementById('stepText').textContent =
+    '已重置，并重新随机了一条操作序列。点「下一步」重新开始。';
+  document.getElementById('btnNext').disabled = false;
+}
+
+function toggleAuto() {
+  var btn = document.getElementById('btnAuto');
+  if (state.timer !== null) {
+    clearTimer();
+    return;
+  }
+  if (state.steps.length === 0) return;
+  if (state.cursor >= state.steps.length) reset();
+  btn.textContent = '暂停';
+  state.timer = setInterval(function () {
+    if (!stepOnce()) {
+      clearTimer();
+    }
+  }, 620);
+  stepOnce();
+}
+
+function init() {
+  document.getElementById('btnLoad').addEventListener('click', function () {
+    loadN(document.getElementById('inp').value);
+  });
+  document.getElementById('btnNext').addEventListener('click', function () {
+    clearTimer();
+    stepOnce();
+  });
+  document.getElementById('btnAuto').addEventListener('click', toggleAuto);
+  document.getElementById('btnReset').addEventListener('click', reset);
+  document.getElementById('inp').addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter') loadN(document.getElementById('inp').value);
+  });
+  document.getElementById('inp').addEventListener('input', function () {
+    setError('');
+  });
+
+  var btns = document.querySelectorAll('.presets button');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].addEventListener('click', function () {
+      var n = this.getAttribute('data-n');
+      document.getElementById('inp').value = n;
+      loadN(n);
+    });
+  }
+
+  loadN(document.getElementById('inp').value);
+}
+
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+}
+</script>
+</body>
+</html>

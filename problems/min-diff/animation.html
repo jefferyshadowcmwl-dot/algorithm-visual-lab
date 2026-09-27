@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>最小差 · 排序 + 双指针 动画精讲</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%);
+    min-height: 100vh; padding: 18px; color: #01579b;
+  }
+  .container {
+    max-width: 1180px; margin: 0 auto; background: rgba(255,255,255,0.96);
+    border-radius: 16px; box-shadow: 0 8px 32px rgba(3,80,140,0.18); padding: 24px;
+  }
+  h1 { text-align: center; color: #01579b; font-size: 25px; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: #0277bd; font-size: 13.5px; margin-bottom: 18px; }
+
+  .controls { display:flex; gap:9px; justify-content:center; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  button, input, select {
+    padding: 8px 14px; border-radius: 8px; border: 1px solid #81d4fa;
+    background:#fff; color:#0277bd; font-size:14px; cursor:pointer; transition: all .18s;
+  }
+  button:hover { background:#4fc3f7; color:#fff; transform: translateY(-1px); }
+  button.primary { background:#039be5; color:#fff; border-color:#0277bd; }
+  button.primary:hover { background:#0277bd; }
+  .error { color:#c62828; text-align:center; min-height:20px; margin-bottom:8px; font-size:14px; }
+
+  /* ---------- 两条数组 ---------- */
+  .rowwrap { margin: 6px 0 4px; }
+  .rowlbl { display:inline-block; width:26px; font-weight:700; color:#01579b; font-size:15px; }
+  .row { display:inline-flex; gap:8px; flex-wrap:wrap; vertical-align:middle; }
+  .cell {
+    position: relative; min-width:52px; width:auto; padding:0 10px; height:44px; line-height:44px;
+    border-radius:8px; text-align:center; font-weight:700; font-size:15px;
+    background:#fafafa; border:2px solid #e0e0e0; color:#78909c;
+  }
+  .cell .idx { position:absolute; top:-9px; left:6px; font-size:10px; color:#b0bec5; font-weight:400; }
+  .cell.dim    { background:#eceff1; border-color:#cfd8dc; color:#b0bec5; text-decoration:line-through; }
+  .cell.cur    { background:#039be5; border-color:#01579b; color:#fff; transform:scale(1.06); }
+  .cell.curB   { background:#8e24aa; border-color:#4a148c; color:#fff; transform:scale(1.06); }
+  /* 当前最优配对：金色内描边，**不抢底色**，可与 cur/curB/dim 叠加 */
+  .cell.ring   { box-shadow: inset 0 0 0 3px #ffb300; }
+  /* 差为 0：整格变绿（写在 .cur 之后，靠更高的特异度压过指针底色） */
+  .cell.hit, .cell.cur.hit, .cell.curB.hit { background:#43a047; border-color:#1b5e20; color:#fff; }
+  .ptr { display:inline-block; width:26px; text-align:center; font-weight:700; }
+  .ptrA { color:#039be5; } .ptrB { color:#8e24aa; }
+  .ptrow { height:20px; }
+
+  /* ---------- 状态条 ---------- */
+  .statusbar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;
+               padding:10px 14px; background:#e1f5fe; border-radius:9px;
+               margin:14px 0 12px; font-size:14px; color:#0277bd; }
+  .cur-diff { font-weight:700; font-size:17px; color:#0277bd; }
+  .answer { font-weight:700; font-size:18px; color:#01579b; }
+
+  .explain { background:#fff8e1; border-left:5px solid #ffb300; border-radius:9px; padding:15px 18px; min-height:170px; }
+  .explain-title { font-weight:700; color:#ef6c00; margin-bottom:8px; font-size:15.5px; }
+  .explain-body { line-height:1.85; font-size:14px; color:#37474f; }
+  .explain-body b { color:#c62828; }
+  .explain-body .k { background:#e1f5fe; padding:1px 6px; border-radius:4px; color:#01579b; font-family:monospace; }
+  .explain-body .hl { color:#e65100; font-weight:700; }
+
+  .legend { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:12px; font-size:12.5px; color:#0277bd; }
+  .legend i { display:inline-block; width:13px; height:13px; border-radius:3px; margin-right:5px; vertical-align:-2px; border:1.5px solid; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>最小差 · 排序 + 双指针 动画精讲</h1>
+  <p class="subtitle">A、B 各自升序排序后，两个指针从最小端出发，谁小谁往前走 &nbsp;|&nbsp; 目标：<b>|A[i] − B[j]| 最小</b>，要求 O(n log n)</p>
+
+  <div class="controls">
+    <button class="primary" onclick="loadSample(1)">题面样例</button>
+    <button onclick="loadSample(2)">无交集 (需走完全程)</button>
+    <button onclick="loadSample(3)">最优藏在中间</button>
+    <input id="seqInput" type="text" value="1 100 101 | 100 101 200" style="width:230px;" placeholder="A 的元素 | B 的元素">
+    <button class="primary" onclick="loadCustom()">载入自定义</button>
+  </div>
+  <div class="controls">
+    <button onclick="prevStep()">◀ 上一步</button>
+    <button class="primary" onclick="togglePlay()" id="btnPlay">▶ 播放</button>
+    <button onclick="nextStep()">下一步 ▶</button>
+    <button onclick="reset()">↻ 重置</button>
+    <select id="playSpeed" onchange="changeSpeed()">
+      <option value="1600">慢速</option>
+      <option value="900" selected>正常</option>
+      <option value="350">快速</option>
+    </select>
+  </div>
+  <div class="error" id="errorBox"></div>
+
+  <div class="rowwrap">
+    <div id="rowA"></div>
+    <div class="ptrow" id="ptrA"></div>
+  </div>
+  <div class="rowwrap">
+    <div id="rowB"></div>
+    <div class="ptrow" id="ptrB"></div>
+  </div>
+
+  <div class="statusbar">
+    <span id="stepCounter">步骤 0 / 0</span>
+    <span>当前这一对：<span class="cur-diff" id="curBox">—</span></span>
+    <span>迄今最小差：<span class="answer" id="answerBox">—</span></span>
+  </div>
+
+  <div class="explain">
+    <div class="explain-title" id="stepTitle">点上面任一「样例」按钮开始</div>
+    <div class="explain-body" id="stepDetail">
+      在 A 里挑一个、B 里挑一个，让两者<strong>差的绝对值</strong>最小。
+      朴素做法是两两配对（O(n²)），本动画演示的是 <strong>排序 + 双指针</strong> 的 O(n log n) 做法。
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:#fafafa;border-color:#e0e0e0"></i>候选元素</span>
+    <span><i style="background:#039be5;border-color:#01579b"></i>A 的指针 i</span>
+    <span><i style="background:#8e24aa;border-color:#4a148c"></i>B 的指针 j</span>
+    <span><i style="background:#fff;border-color:#ffb300;box-shadow:inset 0 0 0 2px #ffb300"></i>当前最优配对</span>
+    <span><i style="background:#43a047;border-color:#1b5e20"></i>差为 0（收工）</span>
+    <span><i style="background:#eceff1;border-color:#cfd8dc"></i>已淘汰（划掉）</span>
+  </div>
+</div>
+
+<script>
+/* ============ 状态 ============ */
+var A0 = [], B0 = [];       // 原始顺序
+var A = [], B = [];         // 排序后（算法就在这上面跑）
+var steps = [];
+var stepIdx = 0;
+var playing = false, timer = null, duration = 900;
+
+var SAMPLES = {
+  1: { A: [3, 4, 6, 7],          B: [2, 3, 8, 9] },
+  2: { A: [10, 20, 30],          B: [1, 2, 3] },
+  3: { A: [7, 7, 7, 7],          B: [3, 9, 12, 15] }
+};
+
+function absOf(x) { return x < 0 ? -x : x; }
+
+/* ============ 双指针全过程（回溯/重放都靠它）============ */
+function runTwoPointer(A, B) {
+  var i = 0, j = 0, best = -1, bestPair = null;
+  var log = [];
+  while (i < A.length && j < B.length) {
+    var d = A[i] - B[j];
+    var diff = absOf(d);
+    var improved = (best < 0 || diff < best);
+    if (improved) { best = diff; bestPair = [i, j]; }
+    log.push({ i: i, j: j, d: d, diff: diff, improved: improved, zero: (diff === 0) });
+    if (diff === 0) break;
+    if (d < 0) i++; else j++;
+  }
+  return { best: best, bestPair: bestPair, log: log };
+}
+
+/* ============ 步骤序列 ============ */
+function buildSteps(A, B) {
+  var s = [];
+  s.push({ type: "intro" });
+  s.push({ type: "sort" });
+  var r = runTwoPointer(A, B);
+  for (var k = 0; k < r.log.length; k++) {
+    var e = r.log[k];
+    s.push({ type: "cmp", i: e.i, j: e.j, d: e.d, diff: e.diff,
+             improved: e.improved, zero: e.zero });
+  }
+  s.push({ type: "finished" });
+  return s;
+}
+
+/* 每一步的指针位置（重放得出，不用增量副作用）
+   ⚠️ 循环边界必须是 `t < k`（**不含当前步**），这样指针正好停在"正在比较的那两格"上：
+      解说讲的是"比 A[i] 与 B[j]…然后把某一方往前推一格"，推进的效果要等到**下一步**才显现。
+      写成 `t <= k` 就会让指针比讲解先跳一格（A 里值全相同时看不出来，值一不同就穿帮）。
+      这条由 verify_min_diff_animation.js 的"指针格子 == 正在比较的格子"断言守着，
+      并且用变异测试确认过：把边界改回 `t <= k`，它立刻报错。 */
+function pointersAt(k) {
+  var i = 0, j = 0;
+  for (var t = 0; t < k; t++) {                 /* k <= steps.length-1，无需再判上界 */
+    var st = steps[t];
+    if (st.type === "cmp") {
+      i = st.i; j = st.j;
+      if (st.zero) break;                       /* 差为 0 就收工，指针不再动 */
+      if (st.d < 0) { i = st.i + 1; } else { j = st.j + 1; }
+    }
+  }
+  return { i: i, j: j };
+}
+
+/* ============ 重放到第 k 步（纯函数，可任意跳转）============ */
+function stateAt(k) {
+  var cur = steps[Math.min(k, steps.length - 1)];
+  var best = -1, bestPair = null;
+  var sortedRevealed = false;
+
+  for (var t = 0; t <= k && t < steps.length; t++) {
+    var st = steps[t];
+    if (st.type === "sort") sortedRevealed = true;
+    if (st.type === "cmp") {
+      if (st.improved) { best = st.diff; bestPair = [st.i, st.j]; }
+    }
+  }
+
+  var p = pointersAt(k);
+  return { cur: cur, best: best, bestPair: bestPair, pi: p.i, pj: p.j,
+           sorted: sortedRevealed };
+}
+
+/* ============ 渲染 ============ */
+function render() {
+  var st = stateAt(stepIdx);
+
+  drawRow("rowA", "ptrA", A0, A, st, "A");
+  drawRow("rowB", "ptrB", B0, B, st, "B");
+
+  document.getElementById("stepCounter").textContent =
+    "步骤 " + Math.min(stepIdx + 1, steps.length) + " / " + steps.length;
+  document.getElementById("curBox").textContent =
+    (st.cur.type === "cmp" ? ("|" + A[st.cur.i] + " − " + B[st.cur.j] + "| = " + st.cur.diff) : "—");
+  document.getElementById("answerBox").textContent = (st.best < 0 ? "—" : st.best);
+  updateExplain();
+}
+
+function drawRow(rowId, ptrId, orig, sorted, st, which) {
+  var box = document.getElementById(rowId);
+  var ptr = document.getElementById(ptrId);
+  var arr = st.sorted ? sorted : orig;
+
+  /* 复用判据：显式比较"格子数 + 排序是否已揭示"两个维度。
+     ⚠️ 别拿 box.childNodes.length 去比 arr.length —— childNodes 只含
+        「行标签 + 行容器」共 2 个，格子数再变它也恒为 2，n=2 时还会假相等。 */
+  var mode = st.sorted ? "s" : "o";
+  if (box._cells === undefined || box._mode !== mode || box._cells.length !== arr.length) {
+    box.innerHTML = "";
+    var lbl = document.createElement("span");
+    lbl.className = "rowlbl";
+    lbl.textContent = which;
+    box.appendChild(lbl);
+    var row = document.createElement("span");
+    row.className = "row";
+    var cells = [];
+    for (var k = 0; k < arr.length; k++) {
+      var c = document.createElement("span");
+      c.className = "cell";
+      var idx = document.createElement("span");
+      idx.className = "idx";
+      c.appendChild(idx);
+      c.appendChild(document.createTextNode(""));
+      row.appendChild(c);
+      cells.push(c);
+    }
+    box.appendChild(row);
+    box._cells = cells;             /* 直接持有引用，渲染时逐个改，不重建 */
+    box._mode = mode;
+  }
+
+  var cells2 = box._cells;
+  for (var c3 = 0; c3 < cells2.length; c3++) {
+    var cell = cells2[c3];
+    cell.childNodes[0].textContent = (st.sorted ? ("[" + (c3 + 1) + "]") : ("原" + (c3 + 1)));
+    cell.childNodes[1].nodeValue = String(arr[c3]);
+
+    /* 类名要能**叠加**：指针底色 + 最优配对的金色描边可以同时出现。
+       ⚠️ 不能像早先那样用 best/hit 直接覆盖 cur —— 当正在比较的那一格
+          恰好也是当前最优配对时，指针的底色会被顶掉，读图的人就看不出
+          "这一刻在比哪两格"了（本轮 Chrome 实拍 + 断言一起抓到的）。 */
+    var cls = "";
+    if (st.sorted) {
+      var pos = which === "A" ? st.pi : st.pj;
+      if (c3 < pos) cls = "dim";                       /* 指针扫过的：已淘汰 */
+      if (c3 === pos) cls = (which === "A" ? "cur" : "curB");
+      if (st.bestPair) {
+        var bp = (which === "A" ? st.bestPair[0] : st.bestPair[1]);
+        if (c3 === bp) {
+          if (st.best === 0) {
+            /* 差为 0：这两格必然就是正在比较的两格，直接整格变绿 */
+            cls = (cls ? cls + " " : "") + "hit";
+          } else {
+            /* 只是"当前最优"：加一圈金边，不抢指针的底色 */
+            cls = (cls ? cls + " " : "") + "ring";
+          }
+        }
+      }
+    }
+    cell.className = "cell" + (cls ? " " + cls : "");
+  }
+
+  /* 指针箭头行（元素少，直接整行重写即可；颜色不依赖 transition）*/
+  var parts = [];
+  var pos2 = (which === "A" ? st.pi : st.pj);
+  if (st.sorted && pos2 < arr.length) {
+    for (var q = 0; q < arr.length; q++) {
+      parts.push(q === pos2 ? (which === "A" ? "i▲" : "j▲") : "&nbsp;");
+    }
+  }
+  ptr.innerHTML = '<span class="rowlbl"></span><span class="row">'
+    + parts.map(function (x) {
+        return '<span class="ptr ' + (which === "A" ? "ptrA" : "ptrB") + '">' + x + '</span>';
+      }).join("")
+    + "</span>";
+}
+
+/* ============ 解说 ============ */
+function updateExplain() {
+  var st = stateAt(stepIdx);
+  var cur = st.cur;
+  var T = document.getElementById("stepTitle");
+  var D = document.getElementById("stepDetail");
+  var n = A.length;
+  var k = function (s) { return '<span class="k">' + s + '</span>'; };
+
+  if (cur.type === "intro") {
+    T.textContent = "① 题目要什么";
+    D.innerHTML =
+      "在 A 里挑一个、B 里挑一个，让<b>差的绝对值最小</b>（两个下标互相独立，不要求同位置）。<br>" +
+      "两两配对是 " + k("O(n²)") + "（" + n + "×" + n + " = " + (n * n) + " 对），" +
+      "而题目要求 " + k("O(n log n)") + "，所以必须先<b>排序</b>，再用<b>双指针</b>扫一遍。<br>" +
+      "上面两行现在还是<b>原始顺序</b>（格子角上标着 原1、原2…），下一步就把它们排好序。";
+  } else if (cur.type === "sort") {
+    T.textContent = "② 先各自升序排序";
+    D.innerHTML =
+      "A、B 各自排成升序（格子角上换成排序后的位次 [1]、[2]…）。排序本身是 " + k("O(n log n)") + "。<br>" +
+      "排好序之后有个关键性质：<b>沿数组往前走，值单调不减</b> —— 双指针就是靠这一点，敢「大胆丢弃」元素。<br>" +
+      "两个指针从最小的那一端出发：" + k("i = 1") + "（A 的第一个）、" + k("j = 1") + "（B 的第一个）。";
+  } else if (cur.type === "cmp") {
+    var av = A[cur.i], bv = B[cur.j];
+    var small = cur.d < 0 ? "B" : "A";
+    /* 比较的序号 = 到目前为止出现过多少个 cmp 步。
+       ⚠️ 不能直接用 stepIdx —— 它还把 intro、sort 两步算在内，会整整差 2。 */
+    var cmpNo = 0;
+    for (var t = 0; t <= stepIdx && t < steps.length; t++) {
+      if (steps[t].type === "cmp") cmpNo++;
+    }
+    T.textContent = "③ 第 " + cmpNo + " 次比较：|" + av + " − " + bv + "| = " + cur.diff;
+    if (cur.zero) {
+      D.innerHTML =
+        "比到了 " + k("A[" + (cur.i + 1) + "] = " + av) + " 与 " + k("B[" + (cur.j + 1) + "] = " + bv) +
+        "，差是 <b>0</b>！<br>差的绝对值不可能小于 0，所以<b>这已经是最优解，可以立刻收工</b>——" +
+        "后面的比较都是多余的。";
+    } else {
+      D.innerHTML =
+        "比 " + k("A[" + (cur.i + 1) + "] = " + av) + " 与 " + k("B[" + (cur.j + 1) + "] = " + bv) +
+        "，差 = " + k("|" + av + " − " + bv + "| = " + cur.diff) + "。" +
+        (cur.improved ? "<b>刷新了迄今最小差</b>（金色标出这一对）。" : "没有比 " + st.best + " 更小。") + "<br>" +
+        "接下来要丢弃一个：这里 <b>" + small + "</b> 的那一方偏小，所以<b>它已经没机会了</b> ——<br>" +
+        "&nbsp;&nbsp;因为对方是升序的，往后每个元素只会<b>更大</b>，" +
+        "拿它们去配这个小的元素，差只会<b>越来越大</b>。<br>" +
+        "所以把 " + k(small + " 的指针") + " 往前推一格（那格元素被划掉淘汰）。";
+    }
+  } else if (cur.type === "finished") {
+    /* A、B 长度都 >= 1（loadCustom 拦了空输入），所以 bestPair 必然存在，不做兜底分支 */
+    var chosen = "A 的第 " + (st.bestPair[0] + 1) + " 个 (" + A[st.bestPair[0]] + ") 与 B 的第 "
+               + (st.bestPair[1] + 1) + " 个 (" + B[st.bestPair[1]] + ")";
+    /* ⚠️ 标题也必须更新：漏写的话终态会一直挂着上一步的"③ 第 N 次比较"，
+       正文讲"扫描结束"、标题还在讲比较，自相矛盾（Chrome 实拍才发现的）。 */
+    T.textContent = "④ 扫描结束：最小差 = " + st.best;
+    D.innerHTML =
+      "扫描结束，最小差 = <b>" + st.best + "</b>，来自 " + chosen + "。<br><br>" +
+      "<b>为什么敢丢弃、却不会漏掉最优解？</b><br>" +
+      "假设真正最优的一对是 " + k("(A[p], B[q])") + "。只要两个指针还没越过 p、q，" +
+      "每步都只推进「偏小」的那一方 —— 那正是朝 p、q 靠近的方向；" +
+      "而当某一方先到达目标位置，另一方仍会继续前进，直到与它<b>相遇并被比较一次</b>。<br>" +
+      "所以最优解一定会被「撞上」，一次都不漏。<br><br>" +
+      "<b>复杂度：</b>排序 " + k("O(n log n)") + " + 双指针最多走 " + k("2n") + " 步 = " +
+      k("O(n log n)") + "，满足题目要求（朴素两两配对是 O(n²)）。";
+  }
+}
+
+/* ============ 控制 ============ */
+function setError(msg) { document.getElementById("errorBox").textContent = msg || ""; }
+
+function loadSample(which) {
+  var s = SAMPLES[which];
+  A0 = s.A.slice(); B0 = s.B.slice();
+  load();
+}
+
+/* 自定义输入：格式 "A 的元素 | B 的元素"，空格/逗号分隔 */
+function loadCustom() {
+  var raw = document.getElementById("seqInput").value.trim();
+  var parts = raw.split("|");
+  if (parts.length !== 2) {
+    setError("格式不对：请写成「A 的元素 | B 的元素」，中间用一个竖线隔开");
+    return;
+  }
+  var split = function (s) {
+    return s.trim().split(/[\s,]+/).filter(function (t) { return t.length; });
+  };
+  var xs = split(parts[0]), ys = split(parts[1]);
+  if (xs.length === 0 || ys.length === 0) { setError("两边都不能为空"); return; }
+  if (xs.length !== ys.length) {
+    setError("A 有 " + xs.length + " 个，B 有 " + ys.length + " 个，两边个数必须一样（题目要求两个数组等长）");
+    return;
+  }
+  if (xs.length > 10) { setError("元素太多（" + xs.length + " 个），为了看得清请控制在 10 个以内"); return; }
+  var a = [], b = [], bad = null;
+  for (var i = 0; i < xs.length; i++) {
+    if (!/^-?\d+$/.test(xs[i]) || !/^-?\d+$/.test(ys[i])) { bad = i + 1; break; }
+    a.push(parseInt(xs[i], 10));
+    b.push(parseInt(ys[i], 10));
+  }
+  if (bad !== null) { setError("第 " + bad + " 组不是整数"); return; }
+  /* 量级闸门：JS 的 number 只能精确表示到 2^53，再大 parseInt 就开始失真，
+     动画算出来的数就跟题目语义不是一回事了。教学用途限在 ±10^9 足够。 */
+  var LIM = 1e9;
+  for (var q = 0; q < a.length; q++) {
+    if (Math.abs(a[q]) > LIM || Math.abs(b[q]) > LIM) {
+      setError("第 " + (q + 1) + " 组数值超过 ±10^9，动画里只看教学规模的小数据");
+      return;
+    }
+  }
+  A0 = a; B0 = b;
+  load();
+}
+
+function load() {
+  A = A0.slice().sort(function (x, y) { return x - y; });
+  B = B0.slice().sort(function (x, y) { return x - y; });
+  steps = buildSteps(A, B);
+  stepIdx = 0;
+  stopPlay();
+  setError("");
+  render();
+}
+
+function reset() { if (steps.length) { stepIdx = 0; stopPlay(); render(); } }
+function nextStep() {
+  if (!steps.length) return;
+  if (stepIdx < steps.length - 1) { stepIdx++; render(); } else stopPlay();
+}
+function prevStep() {
+  if (!steps.length) return;
+  if (stepIdx > 0) { stepIdx--; stopPlay(); render(); }
+}
+function togglePlay() {
+  if (!steps.length) return;
+  if (playing) stopPlay();
+  else {
+    if (stepIdx >= steps.length - 1) stepIdx = 0;
+    playing = true;
+    document.getElementById("btnPlay").textContent = "⏸ 暂停";
+    tick();
+  }
+}
+function tick() {
+  if (!playing) return;
+  render();
+  if (stepIdx >= steps.length - 1) { stopPlay(); return; }
+  timer = setTimeout(function () { stepIdx++; tick(); }, duration);
+}
+function stopPlay() {
+  playing = false;
+  if (timer) { clearTimeout(timer); timer = null; }
+  document.getElementById("btnPlay").textContent = "▶ 播放";
+}
+function changeSpeed() { duration = parseInt(document.getElementById("playSpeed").value, 10); }
+
+loadSample(1);
+</script>
+</body>
+</html>

@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>连通分支数 · 动画精讲</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 55%, #e0e7ff 100%);
+    min-height: 100vh; padding: 18px; color: #1e3a8a;
+  }
+  .container {
+    max-width: 1240px; margin: 0 auto; background: rgba(255,255,255,0.97);
+    border-radius: 16px; box-shadow: 0 8px 32px rgba(30,58,138,0.16); padding: 22px;
+  }
+  h1 { text-align: center; font-size: 25px; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: #3b82f6; font-size: 13.5px; margin-bottom: 16px; }
+
+  .controls { display:flex; gap:9px; justify-content:center; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+  button, input, select, textarea {
+    padding: 8px 14px; border-radius: 8px; border: 1px solid #93c5fd;
+    background:#fff; color:#1d4ed8; font-size:14px; cursor:pointer; transition: all .18s;
+    font-family: inherit;
+  }
+  button:hover { background:#60a5fa; color:#fff; transform: translateY(-1px); }
+  button.primary { background:#2563eb; color:#fff; border-color:#1d4ed8; }
+  button.primary:hover { background:#1d4ed8; }
+  textarea { width: 460px; height: 74px; cursor: text; font-family: Consolas, monospace; font-size: 13px; }
+  .error { color:#dc2626; text-align:center; min-height:20px; margin-bottom:6px; font-size:13.5px; }
+
+  .main { display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; }
+  .left { flex: 1 1 560px; min-width: 420px; }
+  .right { flex: 1 1 330px; min-width: 300px; }
+
+  .graphbox { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; }
+  .graphbox svg { display:block; width:100%; height:auto; }
+
+  table.roots { border-collapse: separate; border-spacing: 4px; width:100%; }
+  table.roots th { background:#eff6ff; color:#1d4ed8; border:2px solid #bfdbfe;
+                   font-size:12.5px; padding:4px 2px; border-radius:6px; }
+  table.roots td { background:#fafafa; border:2px solid #e5e7eb; color:#475569;
+                   font-size:13px; text-align:center; padding:3px 2px; border-radius:6px;
+                   font-weight:700; }
+  table.roots tr.hi td { border-color:#f59e0b; background:#fffbeb; color:#b45309; }
+  .swatch { display:inline-block; width:14px; height:14px; border-radius:4px; vertical-align:-3px; }
+
+  .statusbar { display:flex; justify-content:space-between; align-items:center; gap:10px;
+               padding:10px 14px; background:#eff6ff; border-radius:9px;
+               margin:12px 0; font-size:14px; color:#1d4ed8; flex-wrap:wrap; }
+  .answer { font-weight:700; font-size:18px; color:#1e3a8a; }
+  .bigc { font-weight:700; font-size:18px; color:#b45309; }
+
+  .explain { background:#fff8e1; border-left:5px solid #f59e0b; border-radius:9px; padding:15px 18px; min-height:170px; }
+  .explain-title { font-weight:700; color:#b45309; margin-bottom:8px; font-size:15.5px; }
+  .explain-body { line-height:1.85; font-size:14px; color:#334155; }
+  .explain-body b { color:#dc2626; }
+  .explain-body .k { background:#eff6ff; padding:1px 6px; border-radius:4px; color:#1d4ed8; font-family:monospace; }
+  .explain-body .hl { color:#b45309; font-weight:700; }
+  .explain-body .same { color:#059669; font-weight:700; }
+  .explain-body .diff { color:#dc2626; font-weight:700; }
+
+  .legend { display:flex; gap:13px; justify-content:center; flex-wrap:wrap; margin-top:12px; font-size:12.5px; color:#1d4ed8; }
+  .legend i { display:inline-block; width:13px; height:13px; border-radius:3px; margin-right:5px; vertical-align:-2px; border:1.5px solid; }
+  .graphs { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:10px; }
+  .graphs button.on { background:#1d4ed8; color:#fff; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>连通分支数 · 动画精讲</h1>
+  <p class="subtitle">并查集：一开始每个顶点各成一派，每扫到一条边就看看它能不能把两派并成一派</p>
+
+  <div class="controls">
+    <button class="primary" onclick="loadSample()">载入题面样例（两个图）</button>
+    <textarea id="rawInput" placeholder="粘贴 OJ 输入原文：每个图 n e，随后 e 行 a b，图之间空一行"></textarea>
+    <button class="primary" onclick="loadCustom()">载入自定义</button>
+  </div>
+  <div class="controls">
+    <button onclick="prevStep()">◀ 上一步</button>
+    <button class="primary" onclick="togglePlay()" id="btnPlay">▶ 播放</button>
+    <button onclick="nextStep()">下一步 ▶</button>
+    <button onclick="reset()">↻ 重置</button>
+    <select id="playSpeed" onchange="changeSpeed()">
+      <option value="1400">慢速</option>
+      <option value="750" selected>正常</option>
+      <option value="280">快速</option>
+    </select>
+  </div>
+  <div class="error" id="errorBox"></div>
+  <div class="graphs" id="graphPick"></div>
+
+  <div class="main">
+    <div class="left">
+      <div class="graphbox" id="graphBox"></div>
+      <div class="statusbar">
+        <span id="stepCounter">步骤 0 / 0</span>
+        <span>当前分支数：<span class="bigc" id="compsBox">—</span></span>
+        <span>答案：<span class="answer" id="answerBox">—</span></span>
+      </div>
+    </div>
+    <div class="right">
+      <div style="font-size:13px;color:#1d4ed8;margin-bottom:6px;font-weight:700;">
+        并查集数组（顶点 → 父节点 → 根）
+      </div>
+      <table class="roots" id="rootTable"></table>
+      <div style="font-size:12px;color:#64748b;margin-top:8px;line-height:1.6;">
+        同一根 = 同一分支，<span class="swatch" style="background:#2563eb"></span> 用同一种颜色画在同一堆里。
+        合并时按大小把小树挂到大树上，路径压缩让后续查找几乎一步到位。
+      </div>
+    </div>
+  </div>
+
+  <div class="explain">
+    <div class="explain-title" id="stepTitle">点上面「载入题面样例」开始</div>
+    <div class="explain-body" id="stepDetail">
+      这道题要数：一个无向图被分成几坨，每坨内部互相可达（这就是「连通分支」）。
+      孤立顶点自己也算一坨。
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:#cbd5e1;border-color:#94a3b8"></i>还没扫到的边</span>
+    <span><i style="background:#f59e0b;border-color:#b45309"></i>正在看的这条边</span>
+    <span><i style="background:#2563eb;border-color:#1d4ed8"></i>已扫过（按所属分支着色）</span>
+    <span><i style="background:#e2e8f0;border-color:#94a3b8"></i>孤立顶点（自成一支）</span>
+  </div>
+</div>
+
+<script>
+/* ============ 全局状态 ============ */
+var SAMPLE_TEXT = "2 1\n1 2\n\n5 8\n1 2\n1 3\n1 4\n1 5\n2 3\n2 4\n3 4\n4 5\n";
+
+var PALETTE = ["#2563eb", "#059669", "#d97706", "#dc2626", "#7c3aed",
+               "#0891b2", "#be185d", "#4d7c0f", "#c2410c", "#4338ca"];
+
+var GRAPHS = [];        // 解析出的所有图 {n, edges}
+var GI = 0;             // 当前图的序号
+var N = 0;              // 当前图顶点数
+var EDGES = [];         // 当前图边表
+var STEPS = [];         // 步骤序列
+var stepIdx = 0;
+var playing = false, timer = null, duration = 750;
+
+var SVG_W = 660, SVG_H = 420, CX = 330, CY = 205;
+
+/* ============ 解析输入（与 OJ 一样按 token 读，空行自动吞掉） ============ */
+/* 返回 {graphs, error, note}：
+     graphs —— **已经成功解析出来的**图（出错时不清空！否则粘一份 OJ 原文、
+               后面有个格式小毛病，前面几张图就白解析了，用户什么都看不到）
+     error  —— 真错误（不是整数 / 端点越界 / 画不下的规模）
+     note   —— 不是错误但要说一声的情况（n=0 按题解约定视为输入结束）
+   ⚠️ n=0 与 components.py / .c 的语义保持一致（都当"输入结束"），
+      动画只是额外把这个判断显示给用户看。 */
+function parseGraphs(text) {
+  var toks = String(text).split(/\s+/).filter(function (t) { return t.length; });
+  var graphs = [], i = 0, k;
+
+  function isInt(s) { return /^-?\d+$/.test(s); }
+  function stop(err, note) { return { graphs: graphs, error: err, note: note || null }; }
+
+  if (!toks.length) return stop("什么都没输入", null);
+
+  while (i < toks.length) {
+    if (!isInt(toks[i])) return stop("第 " + (i + 1) + " 个数据不是整数：" + toks[i], null);
+    var n = parseInt(toks[i], 10); i++;
+    if (n === 0) return stop(null, "遇到 n=0：按题解约定视为输入结束，其后内容已忽略");
+    if (n < 0 || n > 30) return stop("为画得清楚，顶点数限 1..30，这里出现 " + n, null);
+    if (i >= toks.length) return stop("读完顶点数 n，后面缺少边数 e", null);
+    if (!isInt(toks[i])) return stop("边数不是整数：" + toks[i], null);
+    var e = parseInt(toks[i], 10); i++;
+    if (e < 0) return stop("边数不能为负：" + e, null);
+    if (e > 60) return stop("为画得清楚，边数限 60，这里出现 " + e, null);
+
+    var edges = [];
+    for (k = 0; k < e; k++) {
+      if (i + 1 >= toks.length) return stop("第 " + (k + 1) + " 条边读不全（需要两个端点）", null);
+      if (!isInt(toks[i]) || !isInt(toks[i + 1])) {
+        return stop("边端点不是整数：" + toks[i] + " " + toks[i + 1], null);
+      }
+      var a = parseInt(toks[i], 10), b = parseInt(toks[i + 1], 10);
+      i += 2;
+      if (a < 1 || a > n || b < 1 || b > n) {
+        return stop("端点 " + a + " " + b + " 超出 1.." + n + "（题面顶点编号是 1-based）", null);
+      }
+      edges.push([a, b]);
+    }
+    graphs.push({ n: n, edges: edges });
+  }
+  return stop(null, null);
+}
+
+/* ============ 并查集（算法本体，与 components.py 同一套规则） ============ */
+function findRoot(par, x) {
+  var root = x;
+  while (par[root] !== root) root = par[root];
+  while (par[x] !== root) { var nx = par[x]; par[x] = root; x = nx; }
+  return root;
+}
+
+function freshParent(n) {
+  var par = [], sz = [], v;
+  for (v = 0; v <= n; v++) { par.push(v); sz.push(1); }
+  return { par: par, size: sz };
+}
+
+/* 独立复核用的 BFS：刻意不走并查集，专门用来互相印证 */
+function independentComponents(n, edges) {
+  var adj = [], v, i;
+  for (v = 0; v <= n; v++) adj.push([]);
+  for (i = 0; i < edges.length; i++) {
+    adj[edges[i][0]].push(edges[i][1]);
+    if (edges[i][0] !== edges[i][1]) adj[edges[i][1]].push(edges[i][0]);
+  }
+  var seen = [], groups = [];
+  for (v = 0; v <= n; v++) seen.push(false);
+  for (v = 1; v <= n; v++) {
+    if (seen[v]) continue;
+    var q = [v], members = [], head = 0;
+    seen[v] = true;
+    while (head < q.length) {
+      var u = q[head]; head++;
+      members.push(u);
+      for (i = 0; i < adj[u].length; i++) {
+        var w = adj[u][i];
+        if (!seen[w]) { seen[w] = true; q.push(w); }
+      }
+    }
+    members.sort(function (x, y) { return x - y; });
+    groups.push(members);
+  }
+  return groups;
+}
+
+/* ============ 步骤序列 ============ */
+function buildSteps() {
+  var s = [], t;
+  s.push({ type: "intro" });
+  s.push({ type: "init" });
+  for (t = 0; t < EDGES.length; t++) {
+    s.push({ type: "look", t: t });        // ① 先看这条边的两端点在不在同一支
+    s.push({ type: "act", t: t });         // ② 再决定合并 or 跳过
+  }
+  s.push({ type: "done" });
+  return s;
+}
+
+/* ============ 重放到第 k 步（纯函数，可任意跳转） ============ */
+function stateAt(k) {
+  var fp = freshParent(N), par = fp.par, sz = fp.size;
+  var comps = N, merges = 0, t, preRoots = null;
+
+  for (t = 0; t <= k && t < STEPS.length; t++) {
+    var st = STEPS[t];
+    if (st.type !== "act") continue;
+    var e = EDGES[st.t], a = e[0], b = e[1];
+    var ra = findRoot(par, a), rb = findRoot(par, b);
+    /* 合并**前**的根与两支大小都要快照：解说要讲"两派各有多少个"，
+       此处若拿 stateAt 末尾的 size（合并后）去讲，会说出"分别有 2 个和 1 个"这种
+       与"小树挂大树"自相矛盾的数（合并前其实是 1 和 1）。 */
+    if (t === k) preRoots = { ra: ra, rb: rb, a: a, b: b, sra: sz[ra], srb: sz[rb] };
+    if (ra !== rb) {
+      if (sz[ra] < sz[rb]) { var tmp = ra; ra = rb; rb = tmp; }
+      par[rb] = ra; sz[ra] += sz[rb]; comps--; merges++;
+    }
+  }
+
+  var cur = STEPS[Math.min(k, STEPS.length - 1)];
+  var curT = -1;
+  if (cur.type === "look" || cur.type === "act") curT = cur.t;
+
+  /* 当前这条边若是 look 步，合并还没发生，根与大小都现算 */
+  if (cur.type === "look") {
+    var e2 = EDGES[cur.t];
+    var qa = findRoot(par, e2[0]), qb = findRoot(par, e2[1]);
+    preRoots = { ra: qa, rb: qb, a: e2[0], b: e2[1], sra: sz[qa], srb: sz[qb] };
+  }
+
+  var roots = [], v;
+  for (v = 0; v <= N; v++) roots.push(v ? findRoot(par, v) : 0);
+
+  var edgeState = [];
+  for (t = 0; t < EDGES.length; t++) {
+    if (curT < 0) edgeState.push("future");
+    else if (t < curT) edgeState.push("past");
+    else if (t === curT) edgeState.push("current");
+    else edgeState.push("future");
+  }
+
+  var groups = null;
+  if (cur.type === "done") groups = independentComponents(N, EDGES);
+
+  return { par: par, roots: roots, comps: comps, merges: merges,
+           cur: cur, curT: curT, preRoots: preRoots, edgeState: edgeState,
+           groups: groups, size: sz.slice(0) };
+}
+
+/* ============ 几何：顶点圆环布局 + 重边/自环的错开 ============ */
+function vertexPositions(n) {
+  var pos = [], v;
+  var r = (n <= 2) ? 90 : (n <= 4 ? 130 : (n <= 8 ? 165 : 175));
+  var vr = (n > 18) ? 11 : 15;
+  for (v = 1; v <= n; v++) {
+    var ang = -Math.PI / 2 + 2 * Math.PI * (v - 1) / n;
+    pos.push({ x: CX + r * Math.cos(ang), y: CY + r * Math.sin(ang), vr: vr });
+  }
+  return pos;
+}
+
+/* 同一对顶点之间的多条边要错开，否则看着只有一条 */
+function edgeOffsets(edges) {
+  var total = {}, seen = {}, offs = [], i, key;
+  for (i = 0; i < edges.length; i++) {
+    key = Math.min(edges[i][0], edges[i][1]) + "-" + Math.max(edges[i][0], edges[i][1]);
+    total[key] = (total[key] || 0) + 1;
+  }
+  for (i = 0; i < edges.length; i++) {
+    key = Math.min(edges[i][0], edges[i][1]) + "-" + Math.max(edges[i][0], edges[i][1]);
+    seen[key] = (seen[key] || 0) + 1;
+    /* 间距要随重数收缩：固定 11px 的话 15 条重边就散到 -96px、60 条到 -291px，
+       整把线被推出画布（审计实测）。限住"最外侧偏移 ≈ 50px"。 */
+    var step = (total[key] > 1) ? Math.min(11, 100 / (total[key] - 1)) : 0;
+    offs.push((seen[key] - 1 - (total[key] - 1) / 2) * step);
+  }
+  return offs;
+}
+
+function colorFor(root) {
+  if (root <= 0) return "#94a3b8";
+  return PALETTE[root % PALETTE.length];
+}
+
+/* ============ 画图 ============ */
+function svgFor(st) {
+  var pos = vertexPositions(N), offs = edgeOffsets(EDGES);
+  var s = ['<svg viewBox="0 0 ' + SVG_W + ' ' + SVG_H + '" xmlns="http://www.w3.org/2000/svg">'];
+  var t, v, i;
+
+  s.push('<defs><filter id="glow" x="-50%" y="-50%" width="200%" height="200%">' +
+         '<feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#f59e0b" flood-opacity="0.85"/>' +
+         '</filter></defs>');
+
+  /* 先画非当前边，当前边单独最后画（保证压在最上层） */
+  for (t = 0; t < EDGES.length; t++) {
+    if (st.edgeState[t] === "current") continue;
+    s.push(edgeSvg(t, st, pos, offs, false));
+  }
+  for (t = 0; t < EDGES.length; t++) {
+    if (st.edgeState[t] !== "current") continue;
+    s.push(edgeSvg(t, st, pos, offs, true));
+  }
+
+  /* 顶点画在最上层 */
+  for (v = 1; v <= N; v++) {
+    var p = pos[v - 1], r = st.roots[v];
+    var hi = (st.curT >= 0 && (EDGES[st.curT][0] === v || EDGES[st.curT][1] === v));
+    var col = colorFor(r);
+    /* ⚠️ 判"孤立"必须看**分支大小**，不能看 r === v：
+       代表元的根就是它自己，若按 r === v 判，代表元会被涂成灰色，
+       而它的同伴是彩色 —— "同根同色"当场破功（Chrome 实拍抓到的）。 */
+    var isLone = (st.size[r] === 1);
+    s.push('<circle cx="' + p.x + '" cy="' + p.y + '" r="' + p.vr + '" fill="' +
+           (isLone ? "#e2e8f0" : col) + '" stroke="' + (hi ? "#f59e0b" : "#1e293b") +
+           '" stroke-width="' + (hi ? 4 : 1.5) + '"/>');
+    s.push('<text x="' + p.x + '" y="' + (p.y + 5) + '" text-anchor="middle" ' +
+           'font-size="' + (p.vr > 12 ? 14 : 11) + '" font-weight="700" fill="' +
+           (isLone ? "#475569" : "#ffffff") + '">' + v + '</text>');
+  }
+
+  s.push('</svg>');
+  return s.join("");
+}
+
+/* 画布内的安全落点。线条留 8px，文字按"以 x 为中心、基线上下各 11/3 px"估盒留宽一点。
+   ⚠️ 光靠"限制偏移量"不够：靠近圆环顶部的弦本来就在 y≈30，再被垂直推出 10~50px 就出界了。
+   所以最后一定要按**画布余量**再夹一道（审计全组合扫描：不夹时 n=9/(1,2)×11 出界 11.9px）。 */
+function clampX(x) { return Math.max(8, Math.min(SVG_W - 8, x)); }
+function clampY(y) { return Math.max(8, Math.min(SVG_H - 8, y)); }
+function clampLabelX(x) { return Math.max(22, Math.min(SVG_W - 22, x)); }
+function clampLabelY(y) { return Math.max(14, Math.min(SVG_H - 6, y)); }
+
+function edgeSvg(t, st, pos, offs, isCur) {
+  var a = EDGES[t][0], b = EDGES[t][1];
+  var kind = st.edgeState[t];
+  var col = "#cbd5e1", w = 1.6;
+  if (kind === "past") { col = colorFor(st.roots[a]); w = 2.6; }
+  if (kind === "current") { col = "#f59e0b"; w = 5.5; }
+
+  var glow = isCur ? ' filter="url(#glow)"' : '';
+  var out = [];
+
+  if (a === b) {
+    var p = pos[a - 1];
+    /* 自环画在顶点正上方，要夹住上边界：n 大时顶点贴近画布顶端，
+       不夹的话整个小圈会顶到 viewBox 外面被裁掉（审计实测 n=30 时 ymin=-3）。 */
+    var cy = Math.max(13, p.y - p.vr - 13);
+    out.push('<circle cx="' + p.x + '" cy="' + cy + '" r="11" fill="none" stroke="' + col +
+             '" stroke-width="' + w + '"' + glow + '/>');
+    /* 标号摆在圈**右侧**、与圈心同高 —— 原来摆在上方（cy-9），
+       顶点贴近顶端时文字会顶出画布（cy=13 时基线只剩 4） */
+    out.push(label(clampLabelX(p.x + 16), clampLabelY(cy), t, col, isCur));
+    return out.join("");
+  }
+
+  var p1 = pos[a - 1], p2 = pos[b - 1];
+  var dx = p2.x - p1.x, dy = p2.y - p1.y;
+  var L = Math.sqrt(dx * dx + dy * dy);
+  var ux0 = (L === 0) ? 0 : -dy / L, uy0 = (L === 0) ? 0 : dx / L;   /* 单位法向 */
+  var ox = ux0 * offs[t], oy = uy0 * offs[t];
+  var x1 = p1.x + ox, y1 = p1.y + oy, x2 = p2.x + ox, y2 = p2.y + oy;
+
+  /* 端点缩到圆周上，别插进顶点圆里 */
+  var ux = (x2 - x1) / L, uy = (y2 - y1) / L;
+  var sx = clampX(x1 + ux * p1.vr), sy = clampY(y1 + uy * p1.vr);
+  var ex = clampX(x2 - ux * p2.vr), ey = clampY(y2 - uy * p2.vr);
+
+  out.push('<line x1="' + sx + '" y1="' + sy + '" x2="' + ex + '" y2="' + ey +
+           '" stroke="' + col + '" stroke-width="' + w + '" stroke-linecap="round"' + glow + '/>');
+  /* ⚠️ 标号定位**不能再乘一次偏移量**：(sx+ex)/2 里已经含了 ox/oy，
+     原来写成 + ox*0.9 等于把偏移算了 1.9 倍（审计实测标签基线跑到 429 > 420）。
+     这里只沿法向轻轻挪开 5px，让字不压在线上。 */
+  out.push(label(clampLabelX((sx + ex) / 2 + ux0 * 9),
+                 clampLabelY((sy + ey) / 2 + uy0 * 9 - 4), t, col, isCur));
+  return out.join("");
+}
+
+function label(x, y, t, col, isCur) {
+  if (EDGES.length > 16) return "";
+  return '<text x="' + x + '" y="' + y + '" text-anchor="middle" font-size="11" ' +
+         'font-weight="700" fill="' + (isCur ? "#b45309" : col) + '">e' + (t + 1) + '</text>';
+}
+
+function tableFor(st) {
+  var s = ['<tr><th>顶点</th><th>父节点</th><th>根</th><th>分支</th></tr>'];
+  var v;
+  for (v = 1; v <= N; v++) {
+    var hi = (st.curT >= 0 && (EDGES[st.curT][0] === v || EDGES[st.curT][1] === v));
+    var r = st.roots[v];
+    s.push('<tr class="' + (hi ? "hi" : "") + '">');
+    s.push('<td>' + v + '</td>');
+    s.push('<td>' + st.par[v] + '</td>');
+    s.push('<td>' + r + '</td>');
+    s.push('<td><span class="swatch" style="background:' +
+           (st.size[r] === 1 ? "#e2e8f0" : colorFor(r)) + '"></span></td>');
+    s.push('</tr>');
+  }
+  return s.join("");
+}
+
+/* ============ 渲染 ============ */
+function render() {
+  var st = stateAt(stepIdx);
+  document.getElementById("graphBox").innerHTML = svgFor(st);
+  document.getElementById("rootTable").innerHTML = tableFor(st);
+  document.getElementById("stepCounter").textContent =
+    "步骤 " + Math.min(stepIdx + 1, STEPS.length) + " / " + STEPS.length;
+  document.getElementById("compsBox").textContent = st.comps;
+  document.getElementById("answerBox").textContent =
+    (st.cur.type === "done" ? st.comps : "—");
+  updateExplain(st);
+}
+
+/* ============ 解说 ============ */
+function esc(x) {
+  return String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function kk(x) { return '<span class="k">' + esc(x) + '</span>'; }
+
+function updateExplain(st) {
+  var T = document.getElementById("stepTitle");
+  var D = document.getElementById("stepDetail");
+  var cur = st.cur;
+  var groups, i, inner, ok;
+
+  if (cur.type === "intro") {
+    T.textContent = "① 这道题在数什么";
+    D.innerHTML =
+      "无向图里，若两个顶点之间存在通路，就说它们<b>连通</b>。把顶点按「连通」分组，" +
+      "每一组叫一个<b>连通分支</b>，题目要的就是组的个数。<br>" +
+      "本图：顶点 " + N + " 个、边 " + EDGES.length + " 条。<br>" +
+      "诀窍是<b>不要真的去搜图</b>，而是用并查集：" +
+      "一开始每个顶点自己一派（分支数 = " + kk(N) + "），" +
+      "每扫一条边 " + kk("(a,b)") + " 就问一句 —— " +
+      "<b>a 和 b 现在是不是已经同一派了？</b>不是就把两派并起来，分支数减 1；是就什么都不做。";
+  } else if (cur.type === "init") {
+    T.textContent = "② 起手式：每个顶点各成一派";
+    D.innerHTML =
+      "把每个顶点的父节点都指向自己（" + kk("parent[v] = v") + "），表示它自己就是自己那一派的代表元。" +
+      "此时分支数 = " + kk(N) + "。<br>" +
+      "右边表格里「根」这一列，就是每个顶点所在派的代表元。同一派 = 根相同 = 同色。<br>" +
+      "<b>为什么孤立顶点不用特判？</b>因为它根本没被任何边碰到，父节点一直指向自己，天然就是独立的一派。";
+  } else if (cur.type === "look" || cur.type === "act") {
+    var t = cur.t;
+    var e = EDGES[t], a = e[0], b = e[1];
+    var pr = st.preRoots;
+    var same = (pr.ra === pr.rb);
+    var actDone = (cur.type === "act");
+
+    if (!actDone) {
+      T.textContent = "③ 第 " + (t + 1) + " 条边：" + a + " — " + b + "：先查两个端点的根";
+      D.innerHTML =
+        "现在看第 " + (t + 1) + " 条边 " + kk("(" + a + ", " + b) + ")。<br>" +
+        "查根：" + kk("find(" + a + ") = " + pr.ra) + "，" + kk("find(" + b + ") = " + pr.rb) + " → " +
+        (same
+          ? "<span class='same'>两个根一样</span>，说明它们<b>本来就已经连通</b>了。"
+          : "<span class='diff'>两个根不一样</span>，说明它们<b>还分属两派</b>，有得一并。") +
+        "<br>（" + (same ? "下一步会跳过这条边。" : "下一步会把这两派合并，分支数减 1。") + "）";
+    } else if (same) {
+      var why = (a === b) ? "这是一条<b>自环</b>（两端是同一个顶点）"
+                          : "两端点已经通过别的边走通了（<b>重边或成环</b>）";
+      T.textContent = "③ 第 " + (t + 1) + " 条边：" + a + " — " + b + "：同一派，跳过";
+      D.innerHTML =
+        why + "，所以这条边<b>不会让分支数减少</b>。<br>" +
+        "分支数保持 " + kk(st.comps) + "。<br>" +
+        "<b>这是本题最容易写错的地方</b>：如果贪方便写成「每扫一条边分支数就减 1」，" +
+        "自环和重边就会被多减，答案偏小（锚定用例 " + kk("n=2, e=1, 边 (1,1)") + " 期望 2，错解会得 1）。";
+    } else {
+      var kept = (pr.sra >= pr.srb) ? pr.ra : pr.rb;
+      var gone = (kept === pr.ra) ? pr.rb : pr.ra;
+      T.textContent = "③ 第 " + (t + 1) + " 条边：" + a + " — " + b + "：两派合并";
+      D.innerHTML =
+        "两派不同，合并它们 —— 把代表元 " + kk(gone) + " 挂到 " + kk(kept) + " 下：" +
+        kk("parent[" + gone + "] = " + kept) + "。<br>" +
+        "为什么是它挂过去？按<b>大小</b>来：两派分别有 " + pr.sra + " 个和 " +
+        pr.srb + " 个顶点，<b>小树挂到大树上</b>树高才压得住。" +
+        "（谁挂谁都<u>不影响分支数</u>，只是影响查找快慢，所以随便挂也不会错。）<br>" +
+        "分支数：" + (st.comps + 1) + " → <b>" + st.comps + "</b>。" +
+        "看左边图：这一坨顶点<b>换成了同一种颜色</b>；右边表格里它们的根也都变成了 " + kept + "。";
+    }
+  } else if (cur.type === "done") {
+    groups = st.groups;
+    var total = 0;
+    var cross = null;
+    for (i = 0; i < groups.length; i++) total += groups[i].length;
+    var gid = [];
+    for (i = 0; i <= N; i++) gid.push(0);
+    for (i = 0; i < groups.length; i++) {
+      for (var j = 0; j < groups[i].length; j++) gid[groups[i][j]] = i + 1;
+    }
+    for (i = 0; i < EDGES.length; i++) {
+      if (gid[EDGES[i][0]] !== gid[EDGES[i][1]]) { cross = i + 1; break; }
+    }
+    /* ⚠️ 这几条必须 && 串起来。原先写成"先逐组 if (inner < ...) ok = false;
+       再用一个不含它的大条件整体重赋值 ok"，那段逐组检查就成了**死代码** ——
+       算了但根本不影响结果（审计指出的）。
+       但也要说清楚：okInner 本身**结构上恒真**（BFS 分出来的组必然连通，
+       内部边数 ≥ |组|−1），所以它是**展示项**，不是有分辨力的检查
+       （复审实测：3000 个随机图里它为假 0 次）。
+       真正承重的是 groups.length === st.comps 与 N - st.merges === st.comps。 */
+    var okInner = true;
+    for (i = 0; i < groups.length; i++) {
+      inner = 0;
+      for (var q = 0; q < EDGES.length; q++) {
+        if (gid[EDGES[q][0]] === i + 1 && gid[EDGES[q][1]] === i + 1) inner++;
+      }
+      if (inner < groups[i].length - 1) okInner = false;   /* 组被并得过大、内部边不够 */
+    }
+    ok = (total === N) && (cross === null) && (groups.length === st.comps) &&
+         (N - st.merges === st.comps) && okInner;
+
+    var lines = [];
+    for (i = 0; i < groups.length; i++) lines.push("{" + groups[i].join(", ") + "}");
+
+    T.textContent = "④ 扫完所有边，答案出来了";
+    D.innerHTML =
+      "分支数 = 顶点数 − 成功合并的次数 = " + N + " − " + st.merges + " = <b>" + st.comps + "</b>。<br>" +
+      "另用 BFS 独立数一遍（与并查集完全不同的路）：" + groups.length + " 个分支 —— " +
+      lines.join("、") + "。<br><br>" +
+      "<b>自校验：</b>分支顶点数合计 " + total + " == n " + N + " -> " + (total === N ? "OK" : "错！") +
+      "；每条边的两端点都落在同一分支 -> " + (cross === null ? "OK" : "第 " + cross + " 条边跨分支，错！") +
+      "；并查集结果 " + st.comps + " == BFS 结果 " + groups.length + " -> " + (groups.length === st.comps ? "OK" : "错！") +
+      "　=> <b>" + (ok ? "ALL OK" : "FAILED") + "</b><br><br>" +
+      "<b>复杂度：</b>每条边两次 find，配了路径压缩 + 按大小合并，总时间 <b>O(e·α(n))</b>" +
+      "（α 是反阿克曼函数，实际就是常数级）；并查集本身只占 <b>O(n)</b>（parent / size 两个数组），" +
+      "整程序还要先把 e 条边读进来存着，合计 <b>O(n + e)</b>。";
+  }
+}
+
+/* ============ 图的选择 / 载入 ============ */
+function loadSample() {
+  document.getElementById("rawInput").value = SAMPLE_TEXT;
+  var r = parseGraphs(SAMPLE_TEXT);
+  GRAPHS = r.graphs;
+  GI = 0;
+  setError("");
+  buildPick();
+  load();
+}
+
+function loadCustom() {
+  var r = parseGraphs(document.getElementById("rawInput").value);
+  if (!r.graphs.length) {
+    // 一张图都没解析出来。⚠️ 先判 note 再判 error —— note（如 n=0 视为结束）
+    // 不是错误，别扣上"输入有问题"的帽子（复审指出）。
+    // 另外把话说全：画布上的图是**上一次**的，不是这次的。
+    if (r.note) {
+      setError("提示：" + r.note + "（这次没有可显示的图；画布仍是上一次的图）");
+    } else {
+      setError("输入有问题：" + (r.error || "没有解析到任何图")
+               + "（画布仍是上一次的图）");
+    }
+    return;
+  }
+  GRAPHS = r.graphs;
+  GI = 0;
+  buildPick();
+  load();
+  if (r.error) {
+    // 后面出错，但前面这些图已经能看了 —— 照样载入，把情况说清楚
+    setError("⚠️ 后面的数据有问题，只载入了前 " + r.graphs.length + " 个图：" + r.error);
+  } else if (r.note) {
+    setError("提示：" + r.note + "（已载入 " + r.graphs.length + " 个图）");
+  } else {
+    setError("");
+  }
+}
+
+function buildPick() {
+  var s = [], i;
+  for (i = 0; i < GRAPHS.length; i++) {
+    s.push('<button class="' + (i === GI ? "on" : "") + '" onclick="pickGraph(' + i + ')">图 '
+           + (i + 1) + '（n=' + GRAPHS[i].n + ', e=' + GRAPHS[i].edges.length + '）</button>');
+  }
+  document.getElementById("graphPick").innerHTML = s.join("");
+}
+
+function pickGraph(i) {
+  if (i < 0 || i >= GRAPHS.length) return;
+  GI = i;
+  buildPick();
+  load();
+}
+
+function load() {
+  N = GRAPHS[GI].n;
+  EDGES = GRAPHS[GI].edges;
+  STEPS = buildSteps();
+  stepIdx = 0;
+  stopPlay();
+  render();
+}
+
+function setError(msg) { document.getElementById("errorBox").textContent = msg || ""; }
+
+/* ============ 播放控制 ============ */
+function reset() { if (STEPS.length) { stepIdx = 0; stopPlay(); render(); } }
+function nextStep() {
+  if (!STEPS.length) return;
+  if (stepIdx < STEPS.length - 1) { stepIdx++; render(); } else stopPlay();
+}
+function prevStep() {
+  if (!STEPS.length) return;
+  if (stepIdx > 0) { stepIdx--; stopPlay(); render(); }
+}
+function togglePlay() {
+  if (!STEPS.length) return;
+  if (playing) stopPlay();
+  else {
+    if (stepIdx >= STEPS.length - 1) stepIdx = 0;
+    playing = true;
+    document.getElementById("btnPlay").textContent = "⏸ 暂停";
+    tick();
+  }
+}
+function tick() {
+  if (!playing) return;
+  render();
+  if (stepIdx >= STEPS.length - 1) { stopPlay(); return; }
+  timer = setTimeout(function () { stepIdx++; tick(); }, duration);
+}
+function stopPlay() {
+  playing = false;
+  if (timer) { clearTimeout(timer); timer = null; }
+  document.getElementById("btnPlay").textContent = "▶ 播放";
+}
+function changeSpeed() { duration = parseInt(document.getElementById("playSpeed").value, 10); }
+
+loadSample();
+</script>
+</body>
+</html>

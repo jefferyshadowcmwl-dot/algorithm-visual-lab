@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>最长公共子序列 · 动画精讲</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    min-height: 100vh; padding: 18px; color: #0d47a1;
+  }
+  .container {
+    max-width: 1180px; margin: 0 auto; background: rgba(255,255,255,0.96);
+    border-radius: 16px; box-shadow: 0 8px 32px rgba(20,60,140,0.18); padding: 24px;
+  }
+  h1 { text-align: center; color: #0d47a1; font-size: 25px; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: #1976d2; font-size: 13.5px; margin-bottom: 18px; }
+
+  .controls { display:flex; gap:9px; justify-content:center; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  button, select {
+    padding: 8px 14px; border-radius: 8px; border: 1px solid #90caf9;
+    background:#fff; color:#1565c0; font-size:14px; cursor:pointer; transition: all .18s;
+  }
+  button:hover { background:#64b5f6; color:#fff; transform: translateY(-1px); }
+  button.primary { background:#1e88e5; color:#fff; border-color:#1565c0; }
+  button.primary:hover { background:#1565c0; }
+  .error { color:#c62828; text-align:center; min-height:20px; margin-bottom:8px; font-size:14px; }
+
+  /* ---------- 两条序列 ---------- */
+  .seqblock { display:flex; justify-content:center; gap:34px; flex-wrap:wrap; margin-bottom:14px; }
+  .seq { display:flex; align-items:center; gap:6px; font-size:14px; }
+  .seq .lbl { font-weight:700; color:#0d47a1; margin-right:4px; }
+  .tok {
+    min-width:30px; padding:4px 8px; border-radius:6px; text-align:center;
+    background:#eceff1; border:2px solid #cfd8dc; color:#546e7a; font-weight:700;
+    transition: background .2s, border-color .2s, color .2s;
+  }
+  .tok.hi { background:#ffb74d; border-color:#f57c00; color:#fff; }
+  .tok.used { background:#81c784; border-color:#388e3c; color:#fff; }
+
+  /* ---------- DP 网格 ---------- */
+  .gridwrap { overflow-x:auto; padding: 6px 0 14px; }
+  .grid { display:inline-block; margin: 0 auto; }
+  table.dp { border-collapse: separate; border-spacing: 4px; margin: 0 auto; }
+  table.dp td, table.dp th {
+    width: 40px; height: 36px; text-align:center; font-size:14px; font-weight:700;
+    border-radius: 7px; transition: background .25s, border-color .25s, color .25s, transform .15s;
+  }
+  table.dp th {
+    background:#e3f2fd; color:#1565c0; border:2px solid #90caf9;
+  }
+  table.dp th.corner { background:#fff; border-color:#fff; color:#90a4ae; font-size:12px; }
+  table.dp td {
+    background:#fafafa; border:2px solid #e0e0e0; color:#bdbdbd;
+  }
+  td.empty   { background:#fafafa; border-color:#e0e0e0; color:#cfd8dc; }
+  td.border0 { background:#eceff1; border-color:#b0bec5; color:#546e7a; }   /* 第0行/列 */
+  td.filled  { background:#c8e6c9; border-color:#66bb6a; color:#1b5e20; }   /* 已算好 */
+  td.current { background:#1e88e5; border-color:#0d47a1; color:#fff; transform:scale(1.12);
+               box-shadow:0 0 0 4px rgba(30,136,229,.3); }
+  td.src     { background:#ffe082; border-color:#ffa000; color:#e65100; transform:scale(1.06); }  /* 左上/上/左 */
+  td.pick    { background:#66bb6a; border-color:#2e7d32; color:#fff; transform:scale(1.08); }    /* 被选用 */
+  td.path    { background:#ffd54f; border-color:#ff8f00; color:#e65100;
+               box-shadow:0 0 0 3px rgba(255,213,79,.55); }
+
+  /* ---------- 状态条 + 解说 ---------- */
+  .statusbar { display:flex; justify-content:space-between; align-items:center;
+               padding:10px 14px; background:#e3f2fd; border-radius:9px;
+               margin-bottom:12px; font-size:14px; color:#1565c0; }
+  .answer { font-weight:700; font-size:18px; color:#0d47a1; }
+
+  .explain { background:#fff8e1; border-left:5px solid #ffb300; border-radius:9px; padding:15px 18px; min-height:150px; }
+  .explain-title { font-weight:700; color:#ef6c00; margin-bottom:8px; font-size:15.5px; }
+  .explain-body { line-height:1.85; font-size:14px; color:#37474f; }
+  .explain-body b { color:#c62828; }
+  .explain-body .k { background:#e3f2fd; padding:1px 6px; border-radius:4px; color:#0d47a1; font-family:monospace; }
+  .explain-body .hl { color:#e65100; font-weight:700; }
+
+  .legend { display:flex; gap:15px; justify-content:center; flex-wrap:wrap; margin-top:12px; font-size:12.5px; color:#1976d2; }
+  .legend i { display:inline-block; width:13px; height:13px; border-radius:3px; margin-right:5px; vertical-align:-2px; border:1.5px solid; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>最长公共子序列 · 动画精讲</h1>
+  <p class="subtitle">dp[i][j] = X前i个 与 Y前j个 的 LCS 长度 &nbsp;|&nbsp; 字符相同取<b>左上+1</b>，否则取<b>上、左的较大者</b></p>
+
+  <div class="controls">
+    <button class="primary" onclick="loadSample(1)">样例1 (ABCBDAB / BDCABA)</button>
+    <button onclick="loadSample(2)">样例2 (baababab / ababbabba)</button>
+    <input id="seqInput" type="text" value="cat bat | bat cat" style="width:230px;" placeholder="X序列 | Y序列">
+    <button class="primary" onclick="loadCustom()">载入自定义</button>
+    <button onclick="prevStep()">◀ 上一步</button>
+    <button class="primary" onclick="togglePlay()" id="btnPlay">▶ 播放</button>
+    <button onclick="nextStep()">下一步 ▶</button>
+    <button onclick="reset()">↻ 重置</button>
+    <select id="playSpeed" onchange="changeSpeed()">
+      <option value="1500">慢速</option>
+      <option value="850" selected>正常</option>
+      <option value="350">快速</option>
+    </select>
+  </div>
+  <div class="error" id="errorBox"></div>
+
+  <div class="seqblock">
+    <div class="seq" id="seqX"></div>
+    <div class="seq" id="seqY"></div>
+  </div>
+
+  <div class="gridwrap"><div class="grid" id="grid"></div></div>
+
+  <div class="statusbar">
+    <span id="stepCounter">步骤 0 / 0</span>
+    <span>LCS 长度：<span class="answer" id="answerBox">—</span></span>
+  </div>
+
+  <div class="explain">
+    <div class="explain-title" id="stepTitle">点上面任一「样例」按钮开始</div>
+    <div class="explain-body" id="stepDetail">
+      这个表怎么读：行是 X 的前缀，列是 Y 的前缀。
+      <span class="k">dp[i][j]</span> 表示「X 的前 i 个」和「Y 的前 j 个」的最长公共子序列长度。
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:#eceff1;border-color:#b0bec5"></i>边界(空序列)</span>
+    <span><i style="background:#c8e6c9;border-color:#66bb6a"></i>已算好</span>
+    <span><i style="background:#1e88e5;border-color:#0d47a1"></i>正在算</span>
+    <span><i style="background:#ffe082;border-color:#ffa000"></i>要看的三格(左上/上/左)</span>
+    <span><i style="background:#66bb6a;border-color:#2e7d32"></i>被选中的来源</span>
+    <span><i style="background:#ffd54f;border-color:#ff8f00"></i>回溯出的子序列</span>
+  </div>
+</div>
+
+<script>
+/* ============ 状态 ============ */
+let X = [], Y = [];
+let dp = [];          // 完整 DP 表
+let steps = [];       // 步骤序列
+let stepIdx = 0;
+let playing = false, timer = null, duration = 850;
+
+const SAMPLES = {
+  1: { X: "A B C B D A B".split(" "), Y: "B D C A B A".split(" ") },
+  2: { X: "b a a b a b a b".split(" "), Y: "a b a b b a b b a".split(" ") }
+};
+
+/* ============ 完整 DP 表（回溯必须靠它） ============ */
+function computeDp(x, y) {
+  const m = x.length, n = y.length;
+  const d = [];
+  for (let i = 0; i <= m; i++) d.push(new Array(n + 1).fill(0));
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (x[i - 1] === y[j - 1]) d[i][j] = d[i - 1][j - 1] + 1;
+      else d[i][j] = Math.max(d[i - 1][j], d[i][j - 1]);
+    }
+  }
+  return d;
+}
+
+/* 回溯出一条具体的最长公共子序列（返回 [i,j] 路径 + 字符） */
+function tracePath(x, y, d) {
+  let i = x.length, j = y.length;
+  const path = [], chars = [];
+  while (i > 0 && j > 0) {
+    if (x[i - 1] === y[j - 1]) { path.push([i, j]); chars.push(x[i - 1]); i--; j--; }
+    else if (d[i - 1][j] >= d[i][j - 1]) { i--; }
+    else { j--; }
+  }
+  path.reverse(); chars.reverse();
+  return { path: path, chars: chars };
+}
+
+/* ============ 步骤序列 ============ */
+function buildSteps(x, y, d) {
+  const m = x.length, n = y.length;
+  const s = [];
+  s.push({ type: "intro" });
+  s.push({ type: "border" });
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      s.push({ type: "calc", i: i, j: j });
+  s.push({ type: "done" });
+  const tr = tracePath(x, y, d);
+  for (let k = 0; k < tr.path.length; k++)
+    s.push({ type: "trace", i: tr.path[k][0], j: tr.path[k][1], ch: tr.chars[k] });
+  s.push({ type: "finished" });
+  return s;
+}
+
+/* ============ 重放到第 k 步，得出每格状态 ============ */
+function stateAt(k) {
+  const m = X.length, n = Y.length;
+  const shown = [];                              // 格子里显示的值
+  for (let i = 0; i <= m; i++) shown.push(new Array(n + 1).fill(null));
+  const cls = [];
+  for (let i = 0; i <= m; i++) cls.push(new Array(n + 1).fill("empty"));
+  const pathSet = {};
+  let answer = null;
+
+  for (let t = 0; t <= k && t < steps.length; t++) {
+    const st = steps[t];
+    if (st.type === "border") {
+      for (let i = 0; i <= m; i++) { cls[i][0] = "border0"; shown[i][0] = 0; }
+      for (let j = 0; j <= n; j++) { cls[0][j] = "border0"; shown[0][j] = 0; }
+    } else if (st.type === "calc") {
+      shown[st.i][st.j] = dp[st.i][st.j];
+      cls[st.i][st.j] = "filled";
+    } else if (st.type === "done") {
+      answer = dp[m][n];
+    } else if (st.type === "trace") {
+      pathSet[st.i + "," + st.j] = true;
+    }
+  }
+
+  const cur = steps[Math.min(k, steps.length - 1)];
+  if (cur.type === "calc") {
+    const i = cur.i, j = cur.j;
+    cls[i][j] = "current";
+    shown[i][j] = dp[i][j];
+    if (X[i - 1] === Y[j - 1]) {
+      cls[i - 1][j - 1] = "pick";                // 相等：关键在左上
+    } else {
+      cls[i - 1][j] = "src";                     // 不等：要看上和左
+      cls[i][j - 1] = "src";
+      const a = dp[i - 1][j], b = dp[i][j - 1];
+      if (a >= b) cls[i - 1][j] = "pick"; else cls[i][j - 1] = "pick";
+    }
+  }
+  for (const key in pathSet) {
+    const p = key.split(",").map(Number);
+    if (cls[p[0]][p[1]] !== "current") cls[p[0]][p[1]] = "path";
+  }
+  if (cur.type === "finished") answer = dp[m][n];
+  return { shown: shown, cls: cls, answer: answer, pathSet: pathSet };
+}
+
+/* ============ 渲染 ============ */
+function render() {
+  const st = stateAt(stepIdx);
+  const m = X.length, n = Y.length;
+
+  /* 两条序列 */
+  const sx = document.getElementById("seqX");
+  const sy = document.getElementById("seqY");
+  const cur = steps[Math.min(stepIdx, steps.length - 1)];
+  const curPath = stateAt(stepIdx).pathSet;
+
+  function drawSeq(el, name, arr) {
+    el.innerHTML = '<span class="lbl">' + name + ' =</span>';
+    arr.forEach(function (c, idx) {
+      const span = document.createElement("span");
+      span.className = "tok";
+      const used = Object.keys(curPath).some(function (key) {
+        const p = key.split(",").map(Number);
+        return (name === "X" ? p[0] : p[1]) === idx + 1;
+      });
+      if (used) span.className = "tok used";
+      else if (cur.type === "calc" && ((name === "X" && cur.i === idx + 1) || (name === "Y" && cur.j === idx + 1))) {
+        span.className = "tok hi";
+      }
+      span.textContent = c;
+      el.appendChild(span);
+    });
+  }
+  drawSeq(sx, "X", X);
+  drawSeq(sy, "Y", Y);
+
+  /* DP 表 — 增量复用单元格 */
+  const grid = document.getElementById("grid");
+  let table = grid.querySelector("table");
+  /* 必须同时校验行数和列数：只看行数的话，m 相同而 n 变化时表头不会重建 */
+  if (!table || table.rows.length !== m + 2 || table.rows[0].cells.length !== n + 2) {
+    grid.innerHTML = "";
+    table = document.createElement("table");
+    table.className = "dp";
+    const hr = table.insertRow();
+    /* 一律显式创建单元格：不要用 insertCell().outerHTML = ... 那种隐式替换 */
+    const corner = document.createElement("th");
+    corner.className = "corner";
+    corner.textContent = "dp";
+    hr.appendChild(corner);
+    const c0 = document.createElement("th");
+    c0.textContent = "ε"; hr.appendChild(c0);
+    for (let j = 0; j < n; j++) {
+      const th = document.createElement("th");
+      th.textContent = Y[j]; hr.appendChild(th);
+    }
+    for (let i = 0; i <= m; i++) {
+      const r = table.insertRow();
+      const th = document.createElement("th");
+      th.textContent = (i === 0 ? "ε" : X[i - 1]);
+      r.appendChild(th);
+      for (let j = 0; j <= n; j++) r.insertCell();
+    }
+    grid.appendChild(table);
+  }
+  for (let i = 0; i <= m; i++) {
+    for (let j = 0; j <= n; j++) {
+      const td = table.rows[i + 1].cells[j + 1];
+      td.className = st.cls[i][j];
+      td.textContent = (st.shown[i][j] === null ? "" : st.shown[i][j]);
+    }
+  }
+
+  document.getElementById("stepCounter").textContent =
+    "步骤 " + Math.min(stepIdx + 1, steps.length) + " / " + steps.length;
+  document.getElementById("answerBox").textContent =
+    (st.answer === null ? "—" : st.answer);
+  updateExplain();
+}
+
+/* ============ 解说 ============ */
+function updateExplain() {
+  const st = steps[Math.min(stepIdx, steps.length - 1)];
+  const m = X.length, n = Y.length;
+  const T = document.getElementById("stepTitle");
+  const D = document.getElementById("stepDetail");
+  /* 序列元素会拼进 innerHTML，先转义，避免元素含 < & 时破坏版式 */
+  const esc = function (s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  };
+  const k = function (s) { return '<span class="k">' + esc(s) + '</span>'; };
+
+  if (st.type === "intro") {
+    T.textContent = "① 这个二维表是什么";
+    D.innerHTML =
+      "行代表 <b>X 的前缀</b>（第 i 行 = X 的前 " + (m) + " 个里的前 i 个），" +
+      "列代表 <b>Y 的前缀</b>。<br>" +
+      "格子里填的数 " + k("dp[i][j]") + " = 「X 前 i 个」和「Y 前 j 个」的<b>最长公共子序列长度</b>。<br>" +
+      "我们要的答案就是<b>右下角</b>那一格 " + k("dp[" + m + "][" + n + "]") + "。";
+  } else if (st.type === "border") {
+    T.textContent = "② 先填边界：空格和谁配都是 0";
+    D.innerHTML =
+      "第 0 行、第 0 列代表<b>空序列</b>（一个字符都没有）。<br>" +
+      "空序列和任何序列的公共子序列只能是空的，长度当然是 <b>0</b>。<br>" +
+      "所以这两条边界全填 0 —— 它们同时也是后面递推的<b>起始条件</b>，省掉了很多特判。";
+  } else if (st.type === "calc") {
+    const i = st.i, j = st.j;
+    const xi = X[i - 1], yj = Y[j - 1];
+    const same = (xi === yj);
+    if (same) {
+      T.textContent = "③ 算 dp[" + i + "][" + j + "] —— 字符相同！";
+      D.innerHTML =
+        "看 X 的第 " + i + " 个字符 " + k(xi) + " 和 Y 的第 " + j + " 个字符 " + k(yj) + "：" +
+        "<b>它们相同</b>！<br>" +
+        "既然两边都有这个字符，就可以把它<b>接在</b>「X 前 " + (i-1) + " 个 与 Y 前 " + (j-1) + " 个」的公共子序列末尾，" +
+        "长度自然 +1。<br>" +
+        "所以 " + k("dp[" + i + "][" + j + "] = dp[" + (i-1) + "][" + (j-1) + "] + 1 = " +
+        dp[i-1][j-1] + " + 1 = " + dp[i][j]) + "（<span class='hl'>看左上角那格</span>）。";
+    } else {
+      const a = dp[i - 1][j], b = dp[i][j - 1];
+      const pickUp = a >= b;
+      T.textContent = "③ 算 dp[" + i + "][" + j + "] —— 字符不同";
+      D.innerHTML =
+        "X 的第 " + i + " 个是 " + k(xi) + "，Y 的第 " + j + " 个是 " + k(yj) + "：<b>不相同</b>。<br>" +
+        "那这个字符至少有一边用不上，于是取两种「放弃」方案里更好的那个：<br>" +
+        "&nbsp;&nbsp;• <b>放弃 X 的这个字符</b> → " + k("dp[" + (i-1) + "][" + j + "]") + " = " + a + "（<span class='hl'>上面</span>那格）<br>" +
+        "&nbsp;&nbsp;• <b>放弃 Y 的这个字符</b> → " + k("dp[" + i + "][" + (j-1) + "]") + " = " + b + "（<span class='hl'>左边</span>那格）<br>" +
+        "取大的：" + k("max(" + a + ", " + b + ") = " + dp[i][j]) + "（选的是" + (pickUp ? "上面" : "左边") + "）。";
+    }
+  } else if (st.type === "done") {
+    T.textContent = "④ 右下角填完，答案就出来了";
+    D.innerHTML =
+      "整张表填完，" + k("dp[" + m + "][" + n + "]") + " = <b>" + dp[m][n] + "</b> —— " +
+      "这正是「X 全部 与 Y 全部 的最长公共子序列长度」，也就是题目要的答案。<br>" +
+      "为什么右下角就是答案？因为它对应<b>两个完整序列</b>。";
+  } else if (st.type === "trace") {
+    T.textContent = "⑤ 回溯：找出具体是哪条子序列";
+    D.innerHTML =
+      "想知道具体是哪个子序列，就从<b>右下角</b>往回走：<br>" +
+      "&nbsp;&nbsp;• 若 X[i-1] 和 Y[j-1] <b>相同</b> → 这个字符<b>就是</b>答案的一部分，收下，然后往<b>左上</b>退一格；<br>" +
+      "&nbsp;&nbsp;• 若<b>不同</b> → 往 dp 值<b>更大</b>的方向退（上面大就往上，左边大就往左）。<br>" +
+      "现在走到了 X 的第 " + st.i + " 个 (" + k(X[st.i-1]) + ") 与 Y 的第 " + st.j + " 个 (" + k(Y[st.j-1]) + ")，" +
+      "它们<b>相同</b>，收下 <span class='hl'>" + st.ch + "</span>。";
+  } else if (st.type === "finished") {
+    const tr = tracePath(X, Y, dp);
+    T.textContent = "⑥ 完成！";
+    D.innerHTML =
+      "最长公共子序列 = <b>" + tr.chars.join(" ") + "</b>，长度 <b>" + dp[m][n] + "</b>。<br><br>" +
+      "<b>整个算法回顾：</b>每个格子只做一次比较，" +
+      "相同就取左上 +1，不同就取上、左的较大者。共 " + m + "×" + n + " = <b>" + (m * n) +
+      "</b> 个格子 → 时间复杂度 <b>O(m·n)</b>；空间可以只用两行滚动到 <b>O(n)</b>。";
+  }
+}
+
+/* ============ 控制 ============ */
+function setError(msg) { document.getElementById("errorBox").textContent = msg || ""; }
+
+function loadSample(which) {
+  const s = SAMPLES[which];
+  X = s.X.slice(); Y = s.Y.slice();
+  load();
+}
+
+/* 自定义输入：格式 "X的若干元素 | Y的若干元素"，按空格/逗号切分 */
+function loadCustom() {
+  const raw = document.getElementById("seqInput").value.trim();
+  const parts = raw.split("|");
+  if (parts.length !== 2) {
+    setError("格式不对：请写成「X序列 | Y序列」，中间用一个竖线隔开");
+    return;
+  }
+  const split = function (s) { return s.trim().split(/[\s,]+/).filter(function (t) { return t.length; }); };
+  const x = split(parts[0]), y = split(parts[1]);
+  if (x.length === 0 || y.length === 0) { setError("两边都不能为空"); return; }
+  if (x.length > 16 || y.length > 16) { setError("序列太长，为了看得清请控制在 16 个元素以内"); return; }
+  X = x; Y = y;
+  load();
+}
+
+function load() {
+  dp = computeDp(X, Y);
+  steps = buildSteps(X, Y, dp);
+  stepIdx = 0;
+  stopPlay();
+  setError("");
+  render();
+}
+
+function reset() { if (steps.length) { stepIdx = 0; stopPlay(); render(); } }
+
+function nextStep() {
+  if (!steps.length) return;
+  if (stepIdx < steps.length - 1) { stepIdx++; render(); }
+  else stopPlay();
+}
+function prevStep() {
+  if (!steps.length) return;
+  if (stepIdx > 0) { stepIdx--; stopPlay(); render(); }
+}
+function togglePlay() {
+  if (!steps.length) return;
+  if (playing) stopPlay();
+  else {
+    if (stepIdx >= steps.length - 1) stepIdx = 0;
+    playing = true;
+    document.getElementById("btnPlay").textContent = "⏸ 暂停";
+    tick();
+  }
+}
+function tick() {
+  if (!playing) return;
+  render();
+  if (stepIdx >= steps.length - 1) { stopPlay(); return; }
+  timer = setTimeout(function () { stepIdx++; tick(); }, duration);
+}
+function stopPlay() {
+  playing = false;
+  if (timer) { clearTimeout(timer); timer = null; }
+  document.getElementById("btnPlay").textContent = "▶ 播放";
+}
+function changeSpeed() { duration = parseInt(document.getElementById("playSpeed").value, 10); }
+
+loadSample(1);
+</script>
+</body>
+</html>

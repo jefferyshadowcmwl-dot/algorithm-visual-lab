@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>n 被 11 除的余数 · 动画精讲</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%);
+    min-height: 100vh; padding: 18px; color: #004d40;
+  }
+  .container {
+    max-width: 1180px; margin: 0 auto; background: rgba(255,255,255,0.96);
+    border-radius: 16px; box-shadow: 0 8px 32px rgba(0,77,64,0.18); padding: 24px;
+  }
+  h1 { text-align: center; color: #004d40; font-size: 25px; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: #00796b; font-size: 13.5px; margin-bottom: 18px; }
+
+  .controls { display:flex; gap:9px; justify-content:center; align-items:center;
+              flex-wrap:wrap; margin-bottom:10px; }
+  input#inp {
+    width: 380px; max-width: 60vw; padding: 8px 12px; border-radius: 8px;
+    border: 1px solid #80cbc4; font-size: 14px; font-family: Consolas, monospace;
+    color: #004d40; background: #fff;
+  }
+  input#inp:focus { outline: none; border-color: #00897b;
+                    box-shadow: 0 0 0 3px rgba(0,137,123,.18); }
+  button {
+    padding: 8px 14px; border-radius: 8px; border: 1px solid #80cbc4;
+    background:#fff; color:#00695c; font-size:14px; cursor:pointer; transition: all .18s;
+  }
+  button:hover { background:#4db6ac; color:#fff; transform: translateY(-1px); }
+  button.primary { background:#00897b; color:#fff; border-color:#00695c; }
+  button.primary:hover { background:#00695c; }
+  button:disabled { opacity:.45; cursor:not-allowed; transform:none; }
+  button.mini { padding: 5px 10px; font-size: 12.5px; }
+
+  .presets { text-align:center; margin-bottom:12px; font-size:13px; color:#00796b;
+             display:flex; gap:6px; justify-content:center; flex-wrap:wrap; align-items:center; }
+  .error { color:#c62828; text-align:center; min-height:20px; margin-bottom:8px; font-size:14px; }
+
+  /* ---------- 数字卡片舞台 ---------- */
+  .stagewrap { border: 1px dashed #b2dfdb; border-radius: 12px;
+               background: #f5fffe; padding: 8px; margin-bottom: 14px; }
+  .stage { position: relative; display: flex; gap: 6px; padding: 10px 6px;
+           overflow-x: auto; overflow-y: hidden; min-height: 104px; align-items: flex-end; }
+  .card {
+    flex: 0 0 auto; width: 36px; border-radius: 8px; text-align: center;
+    border: 2px solid #cfd8dc; background: #eceff1; color: #546e7a;
+    padding: 4px 0 3px; transition: transform .18s, background .18s, border-color .18s;
+  }
+  .card .sign { font-size: 13px; font-weight: 700; line-height: 15px; }
+  .card .digit { font-size: 19px; font-weight: 700; line-height: 23px;
+                 font-family: Consolas, monospace; }
+  .card .k { font-size: 9.5px; color: #90a4ae; line-height: 12px; }
+
+  .card.cplus  { background:#e8f5e9; border-color:#a5d6a7; color:#2e7d32; }
+  .card.cminus { background:#fff3e0; border-color:#ffcc80; color:#e65100; }
+  .card.done   { opacity: .82; }
+  .card.cur { transform: translateY(-9px) scale(1.14); opacity:1;
+              box-shadow: 0 8px 18px rgba(0,105,92,.35); }
+  .card.cur.cplus  { background:#00acc1; border-color:#006064; color:#fff; }
+  .card.cur.cminus { background:#f57c00; border-color:#e65100; color:#fff; }
+  .card.cur .k { color: #e0f7fa; }
+
+  /* ---------- 累加面板 ---------- */
+  .panel { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:12px; }
+  .stat { min-width: 118px; padding: 9px 14px; border-radius: 10px;
+          background:#e0f2f1; border:1px solid #b2dfdb; text-align:center; }
+  .stat .lbl { display:block; font-size:12px; color:#00796b; margin-bottom:2px; }
+  .stat .val { font-size:19px; font-weight:700; color:#004d40;
+               font-family: Consolas, monospace; }
+  .stat.hi { background:#fff8e1; border-color:#ffd54f; }
+  .stat.hi .val { color:#e65100; }
+  .stat.ans { background:#00897b; border-color:#00695c; }
+  .stat.ans .lbl, .stat.ans .val { color:#fff; }
+
+  /* ---------- 解说 ---------- */
+  .narr { padding: 13px 16px; border-radius: 10px; background: #f1f8e9;
+          border-left: 5px solid #8bc34a; font-size: 14px; line-height: 1.65;
+          color: #33691e; min-height: 58px; margin-bottom: 14px; }
+  .narr .hl { background:#dcedc8; padding: 0 4px; border-radius: 3px; font-weight:700; }
+
+  /* ---------- 公式 ---------- */
+  .formula { background:#f5fffe; border:1px solid #b2dfdb; border-radius:10px;
+             padding:12px 16px; font-size:13.5px; line-height:1.85; color:#00695c; }
+  .formula code { font-family: Consolas, monospace; background:#e0f2f1;
+                  padding:1px 5px; border-radius:4px; color:#004d40; }
+  .formula .ttl { font-weight:700; color:#004d40; margin-bottom:4px; }
+
+  .progress { text-align:center; font-size:12.5px; color:#00796b; margin-bottom:8px;
+              font-family: Consolas, monospace; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>n 被 11 除的余数</h1>
+  <p class="subtitle">
+    交替和法 —— 从个位起编号，偶数号位取 +、奇数号位取 −，
+    得到的 diff 与 n 同余，故 <b>答案 = diff mod 11</b>
+  </p>
+
+  <div class="controls">
+    <input id="inp" type="text" value="781020569876102789" maxlength="90"
+           placeholder="输入一个十进制正整数（最多 80 位）">
+    <button id="btnLoad" class="primary">载入</button>
+    <button id="btnNext">下一步</button>
+    <button id="btnAuto">自动播放</button>
+    <button id="btnReset">重置</button>
+  </div>
+
+  <div class="presets">
+    <span>预设：</span>
+    <button class="mini" data-n="78">78 → 1</button>
+    <button class="mini" data-n="70906">70906 → 0</button>
+    <button class="mini" data-n="781020569876102789">样例 3 → 2</button>
+    <button class="mini" data-n="10">10（负 diff → 10）</button>
+    <button class="mini" data-n="91">91（负 diff → 3）</button>
+    <button class="mini" data-n="121">121（11 的倍数 → 0）</button>
+    <button class="mini" data-n="0012">0012（前导零 → 1）</button>
+    <button class="mini" data-gen="9" data-len="80">80 位全 9 → 0</button>
+    <button class="mini" data-gen="1" data-len="80">10^79 → 10</button>
+  </div>
+
+  <div class="error" id="err"></div>
+  <div class="progress" id="prog"></div>
+
+  <div class="stagewrap">
+    <div class="stage" id="stage"></div>
+  </div>
+
+  <div class="panel">
+    <div class="stat"><span class="lbl">plus（偶数号位之和）</span>
+      <span class="val" id="vPlus">0</span></div>
+    <div class="stat"><span class="lbl">minus（奇数号位之和）</span>
+      <span class="val" id="vMinus">0</span></div>
+    <div class="stat hi"><span class="lbl">diff = plus − minus</span>
+      <span class="val" id="vDiff">0</span></div>
+    <div class="stat ans"><span class="lbl">答案 diff mod 11</span>
+      <span class="val" id="vRem">–</span></div>
+  </div>
+
+  <div class="narr" id="narr">
+    点「下一步」开始逐位扫描，也可以直接按「自动播放」。
+    卡片上方标着该位取 + 还是 −，扫描时下方三个累计值会实时更新。
+  </div>
+
+  <div class="formula">
+    <div class="ttl">为什么符号会逐位交替？</div>
+    <div>
+      因为 <code>10 = 11 − 1 ≡ −1 (mod 11)</code>，于是
+      <code>10^k ≡ (−1)^k (mod 11)</code>。<br>
+      把 n 按位展开 <code>n = Σ d_k · 10^k</code>（k 从个位起编号 0），逐项取模即得
+      <code>n ≡ Σ d_k · (−1)^k (mod 11)</code>。<br>
+      看 10 的幂对 11 取余：k=0,1,2,3,… 依次是
+      <code>1, 10, 1, 10, …</code>，写成带符号的形式就是 <code>1, −1, 1, −1, …</code> ——
+      只有两种取值，所以符号逐位交替，与数字本身无关。<br>
+      <b>注意负数</b>：diff 可能是负的，而 C 与 JavaScript 的 <code>%</code> 对负数返回负值
+      （<code>−1 % 11 === −1</code>），必须写成 <code>((diff % 11) + 11) % 11</code>；
+      Python 的 <code>%</code> 则直接给出 10。锚定用例 <code>10</code>（diff = −1）专抓这一步。
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ==================================================================
+ * 纯逻辑部分 —— 不碰 DOM，可用 node 抽出后直接实跑断言
+ * ================================================================== */
+
+/* n 是否为纯十进制数字串（允许前导零） */
+function isValidUint(s) {
+  if (!s || s.length === 0) return false;
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charAt(i);
+    if (c < '0' || c > '9') return false;
+  }
+  return true;
+}
+
+/* 位数名称：前几个用中文习惯叫法，再长就报编号 */
+function posName(k) {
+  var small = ['个位', '十位', '百位', '千位'];
+  if (k < small.length) return small[k];
+  return '从个位起第 ' + (k + 1) + ' 位';
+}
+
+/* 一句话解说某一位在做什么 */
+function describeStep(dg, plus, minus, diff, total) {
+  var role = (dg.sign > 0) ? '取 +' : '取 −';
+  return '第 ' + (dg.index + 1) + ' / ' + total + ' 步：' + posName(dg.k) +
+         '（k = ' + dg.k + '）的数字是 ' + dg.d + '，' + role +
+         '。plus = ' + plus + '，minus = ' + minus + '，diff = plus − minus = ' + diff + '。';
+}
+
+/* 核心：把 n 拆成逐位步骤序列 */
+function computeSteps(s) {
+  var n = s.length;
+  var digits = [];          /* digits[0] 是个位，digits[n-1] 是最高位 */
+  for (var k = 0; k < n; k++) {
+    var d = s.charCodeAt(n - 1 - k) - 48;
+    var sign = (k % 2 === 0) ? 1 : -1;
+    digits.push({ k: k, d: d, sign: sign, contrib: sign * d });
+  }
+
+  var plus = 0, minus = 0;
+  var steps = [];
+  for (var i = 0; i < n; i++) {
+    var dg = digits[i];
+    if (dg.sign > 0) { plus += dg.d; } else { minus += dg.d; }
+    var diffSoFar = plus - minus;
+    steps.push({
+      index: i,
+      k: dg.k,
+      d: dg.d,
+      sign: dg.sign,
+      contrib: dg.contrib,
+      plus: plus,
+      minus: minus,
+      diff: diffSoFar,
+      text: describeStep({ index: i, k: dg.k, d: dg.d, sign: dg.sign },
+                         plus, minus, diffSoFar, n)
+    });
+  }
+
+  var diff = plus - minus;
+  /* JS 的 % 对负数返回负值（与 C 相同），必须补正 */
+  var rem = ((diff % 11) + 11) % 11;
+
+  return {
+    n: n, digits: digits, plus: plus, minus: minus,
+    diff: diff, rem: rem, steps: steps
+  };
+}
+
+/* ==================================================================
+ * 渲染 / 交互部分 —— 只在浏览器里跑（node 下 document 未定义，会跳过）
+ * ================================================================== */
+
+var state = { res: null, cursor: 0, timer: null, cardByK: {} };
+
+function clearTimer() {
+  if (state.timer !== null) {
+    clearInterval(state.timer);
+    state.timer = null;
+  }
+  /* 定时器一停，按钮文字必须跟着回到「自动播放」。
+     否则 reset() / loadNumber() 之后按钮还写着「暂停」，和实际状态不符。 */
+  var btn = document.getElementById('btnAuto');
+  if (btn) { btn.textContent = '自动播放'; }
+}
+
+function setError(msg) {
+  document.getElementById('err').textContent = msg;
+}
+
+/* 载入失败时把上一个数的动画彻底清掉 —— 否则错误提示旁边还留着旧结果，
+   用户能在报错状态下继续步进上一个数，很容易看串。 */
+function clearStage() {
+  document.getElementById('stage').innerHTML = '';
+  state.cardByK = {};
+  state.res = null;
+  state.cursor = 0;
+  showPanel({ plus: 0, minus: 0, diff: 0, rem: null });
+  document.getElementById('prog').textContent = '';
+  document.getElementById('narr').textContent = '输入无效，已清空演示。';
+  document.getElementById('btnNext').disabled = true;
+}
+
+function buildStage(res) {
+  var stage = document.getElementById('stage');
+  stage.innerHTML = '';
+  state.cardByK = {};
+
+  /* 按数字原本的顺序显示：最高位在左、个位在右 */
+  for (var i = res.digits.length - 1; i >= 0; i--) {
+    var dg = res.digits[i];
+    var card = document.createElement('div');
+    card.className = 'card ' + (dg.sign > 0 ? 'cplus' : 'cminus');
+
+    var sgn = document.createElement('div');
+    sgn.className = 'sign';
+    sgn.textContent = (dg.sign > 0 ? '+' : '−');   /* U+2212 真减号 */
+
+    var dig = document.createElement('div');
+    dig.className = 'digit';
+    dig.textContent = String(dg.d);
+
+    var kk = document.createElement('div');
+    kk.className = 'k';
+    kk.textContent = 'k=' + dg.k;
+
+    card.appendChild(sgn);
+    card.appendChild(dig);
+    card.appendChild(kk);
+    stage.appendChild(card);
+    state.cardByK[dg.k] = card;
+  }
+}
+
+function scrollToCard(el) {
+  var stage = document.getElementById('stage');
+  var target = el.offsetLeft - stage.clientWidth / 2 + el.offsetWidth / 2;
+  stage.scrollLeft = Math.max(0, target);
+}
+
+function showPanel(vals) {
+  document.getElementById('vPlus').textContent = String(vals.plus);
+  document.getElementById('vMinus').textContent = String(vals.minus);
+  document.getElementById('vDiff').textContent = String(vals.diff);
+  document.getElementById('vRem').textContent = (vals.rem === null ? '–' : String(vals.rem));
+}
+
+function loadNumber(raw) {
+  clearTimer();
+
+  var s = raw.replace(/\s+/g, '');
+  if (!isValidUint(s)) {
+    setError('请输入一个只含数字 0-9 的正整数。');
+    clearStage();
+    return false;
+  }
+  if (s.length > 80) {
+    setError('题面保证 n 最长 80 位，这里最多演示 80 位。');
+    clearStage();
+    return false;
+  }
+  setError('');
+
+  var res = computeSteps(s);
+  state.res = res;
+  state.cursor = 0;
+  buildStage(res);
+  showPanel({ plus: 0, minus: 0, diff: 0, rem: null });
+  document.getElementById('prog').textContent =
+    'n = ' + s + '   （' + res.n + ' 位）';
+  document.getElementById('narr').textContent =
+    '已载入 ' + res.n + ' 位数。点「下一步」或「自动播放」开始从个位往高位扫描。';
+  document.getElementById('btnNext').disabled = (res.n === 0);
+  return true;
+}
+
+function stepOnce() {
+  if (!state.res) return false;
+  if (state.cursor >= state.res.steps.length) return false;
+
+  var step = state.res.steps[state.cursor];
+  for (var k in state.cardByK) {
+    state.cardByK[k].className =
+      state.cardByK[k].className.replace(/\s*cur/g, '');
+  }
+  var card = state.cardByK[step.k];
+  card.className = card.className + ' cur done';
+  scrollToCard(card);
+
+  showPanel({ plus: step.plus, minus: step.minus, diff: step.diff, rem: null });
+  document.getElementById('narr').textContent = step.text;
+
+  state.cursor++;
+  if (state.cursor >= state.res.steps.length) {
+    finish();
+    return false;
+  }
+  return true;
+}
+
+function finish() {
+  var res = state.res;
+  showPanel({ plus: res.plus, minus: res.minus, diff: res.diff, rem: res.rem });
+  for (var k in state.cardByK) {
+    state.cardByK[k].className =
+      state.cardByK[k].className.replace(/\s*cur/g, '') + ' done';
+  }
+
+  var txt = '扫描完毕：plus = ' + res.plus + '，minus = ' + res.minus +
+            '，diff = plus − minus = ' + res.diff + '。' +
+            'diff mod 11 = ' + res.rem + '，所以 n 被 11 除的余数是 ' + res.rem + '。';
+  if (res.diff < 0) {
+    txt += '　注意 diff 是负数：C 与 JavaScript 里 ' + res.diff +
+           ' % 11 会得到 ' + (res.diff % 11) + '，必须再 +11 补正才是 ' +
+           res.rem + ' —— 这是本题最容易漏的一步，锚定用例 10 / 91 专抓它。';
+  }
+  document.getElementById('narr').textContent = txt;
+  document.getElementById('btnNext').disabled = true;
+}
+
+function reset() {
+  clearTimer();
+  if (!state.res) return;
+  state.cursor = 0;
+  for (var k in state.cardByK) {
+    state.cardByK[k].className =
+      state.cardByK[k].className.replace(/\s*(cur|done)/g, '');
+  }
+  showPanel({ plus: 0, minus: 0, diff: 0, rem: null });
+  document.getElementById('narr').textContent =
+    '已重置。点「下一步」重新从个位开始扫描。';
+  document.getElementById('btnNext').disabled = false;
+  document.getElementById('stage').scrollLeft = 0;
+}
+
+function toggleAuto() {
+  var btn = document.getElementById('btnAuto');
+  if (state.timer !== null) {
+    clearTimer();                    /* clearTimer 内部已把按钮文字复位 */
+    return;
+  }
+  if (!state.res) return;
+  if (state.cursor >= state.res.steps.length) reset();
+  btn.textContent = '暂停';
+  state.timer = setInterval(function () {
+    if (!stepOnce()) {
+      clearTimer();
+      document.getElementById('btnAuto').textContent = '自动播放';
+    }
+  }, 620);
+  stepOnce();
+}
+
+function init() {
+  document.getElementById('btnLoad').addEventListener('click', function () {
+    loadNumber(document.getElementById('inp').value);
+  });
+  document.getElementById('btnNext').addEventListener('click', function () {
+    clearTimer();
+    document.getElementById('btnAuto').textContent = '自动播放';
+    stepOnce();
+  });
+  document.getElementById('btnAuto').addEventListener('click', toggleAuto);
+  document.getElementById('btnReset').addEventListener('click', reset);
+  document.getElementById('inp').addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter') loadNumber(document.getElementById('inp').value);
+  });
+  document.getElementById('inp').addEventListener('input', function () {
+    setError('');
+  });
+
+  var btns = document.querySelectorAll('.presets button');
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].addEventListener('click', function () {
+      var n = this.getAttribute('data-n');
+      if (n === null) {
+        var gen = this.getAttribute('data-gen');
+        var len = parseInt(this.getAttribute('data-len'), 10);
+        n = (gen === '1') ? ('1' + new Array(len).join('0'))
+                          : new Array(len + 1).join('9');
+      }
+      document.getElementById('inp').value = n;
+      loadNumber(n);
+    });
+  }
+
+  loadNumber(document.getElementById('inp').value);
+}
+
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+}
+</script>
+</body>
+</html>
