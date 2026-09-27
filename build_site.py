@@ -306,6 +306,7 @@ def md_to_html(md):
     lines = md.replace("\r\n", "\n").split("\n")
     out = []
     i = 0
+    sec_ids = []          # 已产出的 h2/h3 锚点序号（供右侧目录用）
 
     def flush_para(buf):
         if buf:
@@ -338,12 +339,18 @@ def md_to_html(md):
             i += 1
             continue
 
-        # 标题
+        # 标题（给 h2/h3 加锚点 id，右侧目录要用它跳转）
         m = re.match(r"^(#{1,4})\s+(.*)$", line)
         if m:
             flush_para(para)
             lvl = len(m.group(1))
-            out.append("<h%d>%s</h%d>" % (lvl, inline(m.group(2)), lvl))
+            text = m.group(2)
+            anchor = ""
+            if lvl in (2, 3):
+                # 锚点用序号，稳：中文标题直接当 id 容易踩编码/重复的坑
+                sec_ids.append(len(sec_ids) + 1)
+                anchor = ' id="sec-%d"' % sec_ids[-1]
+            out.append("<h%d%s>%s</h%d>" % (lvl, anchor, inline(text), lvl))
             i += 1
             continue
 
@@ -432,6 +439,7 @@ def md_to_html(md):
 def build():
     data = []
     kw_hits_by_problem = {}
+    toc_by_problem = {}
     problems_dir = os.path.join(OUT_ROOT, "problems")
     if os.path.isdir(problems_dir):
         shutil.rmtree(problems_dir)
@@ -467,6 +475,14 @@ def build():
                            if slug in slugs]
                 doc_html = linkify(raw_html, curated)
                 kw_hits_by_problem[slug] = (curated, plain_text(raw_html))
+                # 右侧目录：从 h2/h3 抽出（标题文字 + 锚点）
+                toc = []
+                for hm in re.finditer(r'<h([23])(?: id="(sec-\d+)")?>(.*?)</h\1>',
+                                      raw_html, re.S):
+                    text = re.sub(r"<[^>]+>", "", hm.group(3)).strip()
+                    if hm.group(2):
+                        toc.append({"id": hm.group(2), "text": text, "lvl": int(hm.group(1))})
+                toc_by_problem[slug] = toc
                 break
 
         # 源码：去注释版 + 原版
@@ -498,6 +514,7 @@ def build():
             "catId": concept_of_problem(slug),
             "cx": cx, "fmt": fmt, "summary": summary,
             "docName": doc_name, "doc": doc_html, "hasAnim": has_anim,
+            "toc": toc_by_problem.get(slug, []),
             "files": [s["file"] for s in srcs],
         })
         print("[OK] %-12s %-10s 详解 %-22s 动画 %-3s 源码 %d 个"

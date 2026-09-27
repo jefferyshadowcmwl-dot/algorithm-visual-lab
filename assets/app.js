@@ -148,6 +148,8 @@
   }
 
   /* ---------------------------------------------------------------- 视图：首页 */
+  /* 首页刻意做得"轻"：一行导语 + 数字 + 卡片，长解释都收进各自的页面。
+     （上一版首页塞了整段介绍，读起来累 —— 这是本轮改版要治的主要问题。） */
   function vHome() {
     var conSorted = WIKI.concepts.slice().sort(function (a, b) {
       return b.problems.length - a.problems.length || a.name.localeCompare(b.name);
@@ -155,10 +157,9 @@
     return '' +
       '<header class="head">' +
         '<div class="kicker">算法可视化实验室</div>' +
-        "<h2><span class=\"n\">10</span>道经典算法题 · 知识 wiki</h2>" +
-        '<p class="sum">每道题都有：<b>详解</b>（含判题格式怎么反推、边界与陷阱、验证记录）、' +
-        '<b>可交互动画</b>、<b>可一键复制的去注释源码</b>。' +
-        "题解里的概念会自动链到概念页，概念页再反链回所有用到它的题目 —— 可以顺着链接一路读下去。</p>" +
+        '<h2><span class="n">10</span>道经典算法题</h2>' +
+        '<p class="lead">每题一篇详解、一个可交互动画、一份可复制的去注释源码；' +
+        "题解与概念互相链接，可以顺着读下去。</p>" +
         '<div class="chips">' +
           mkChip("题目 " + DATA.length, null, "neutral") +
           mkChip("分类 " + WIKI.categories.length, "#/idx", "neutral") +
@@ -183,8 +184,65 @@
       '<div class="grid">' + WIKI.snippets.map(function (s) {
         return '<a class="card" href="#/s/' + s.id + '"><h4>' + esc(s.name) +
           '<span class="cnt">' + s.problems.length + " 题在用</span></h4><p>" +
-          esc(plain(s.desc[0]).slice(0, 92)) + "…</p></a>";
+          esc(plain(s.desc[0]).slice(0, 84)) + "…</p></a>";
       }).join("") + "</div>";
+  }
+
+  /* 把一列"要点"渲染成：第一条直接可见 + 其余收进折叠块。
+     目的就是"先给结论，细节按需展开"，别一上来糊一大段。 */
+  function bullets(items, keep) {
+    if (!items || !items.length) return "";
+    var head = items.slice(0, keep);
+    var rest = items.slice(keep);
+    var out = '<ul>' + head.map(function (b) { return "<li>" + b + "</li>"; }).join("") + "</ul>";
+    if (rest.length) {
+      out += '<details class="more"><summary>展开其余 ' + rest.length + ' 条要点</summary>' +
+        '<div class="body"><ul>' +
+        rest.map(function (b) { return "<li>" + b + "</li>"; }).join("") + "</ul></div></details>";
+    }
+    return out;
+  }
+
+  /* 长文档的右侧目录。
+     ⚠️ 用 <button> + JS 滚动，**不要**写成 `#/p/x/doc#s-1` 那种两层 hash：
+     那个 URL 我的路由解析不了（会被当成未知路由踢回首页）。 */
+  function tocHtml(p) {
+    if (!p.toc || p.toc.length < 3) return "";
+    return '<nav class="toc" aria-label="本文目录"><h4>本文目录</h4><ol>' +
+      p.toc.map(function (t) {
+        return '<li><button type="button" class="lvl' + t.lvl +
+          '" data-target="' + t.id + '">' + esc(t.text) + "</button></li>";
+      }).join("") + "</ol></nav>";
+  }
+
+  /* 目录交互：点击滚动 + 滚动时高亮当前章节（IntersectionObserver） */
+  function mountToc() {
+    var toc = viewEl.querySelector(".toc");
+    if (!toc) return;
+    var btns = Array.prototype.slice.call(toc.querySelectorAll("button[data-target]"));
+    function activate(id) {
+      btns.forEach(function (b) {
+        b.classList.toggle("on", b.dataset.target === id);
+      });
+    }
+    btns.forEach(function (b) {
+      b.addEventListener("click", function () {
+        var el = document.getElementById(b.dataset.target);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        activate(b.dataset.target);
+      });
+    });
+    if (!("IntersectionObserver" in window)) return;
+    var heads = btns.map(function (b) { return document.getElementById(b.dataset.target); })
+                    .filter(Boolean);
+    var visible = {};
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { visible[e.target.id] = e.isIntersecting; });
+      for (var i = 0; i < heads.length; i++) {            // 取"最靠上且可见"的那个
+        if (visible[heads[i].id]) { activate(heads[i].id); break; }
+      }
+    }, { rootMargin: "-72px 0px -70% 0px", threshold: 0 });
+    heads.forEach(function (h) { io.observe(h); });
   }
 
   /* ---------------------------------------------------------------- 视图：分类 */
@@ -225,9 +283,7 @@
       '<header class="head">' +
         '<div class="kicker">概念 · 关联 ' + c.problems.length + " 道题</div>" +
         "<h2>" + esc(c.name) + "</h2><p class=\"sum\">" + c.def + "</p></header>" +
-      '<div class="prose concept-body">' +
-        "<ul>" + c.body.map(function (b) { return "<li>" + b + "</li>"; }).join("") + "</ul>" +
-      "</div>" +
+      '<div class="prose concept-body">' + bullets(c.body, 1) + "</div>" +
       '<h3 class="sect">哪些题用到了它<span class="hint">反向链接</span></h3>' +
       '<div class="kwlist">' + c.problems.map(function (s) {
         return '<a class="kwchip" href="#/p/' + s + '">' + esc(pTitle(s)) + "</a>";
@@ -252,9 +308,7 @@
                      { text: s.name }]) +
         "<header class=\"head\"><div class=\"kicker\">代码片段 · " + esc(s.lang) +
         "</div><h2>" + esc(s.name) + "</h2></header>" +
-        '<div class="prose snippetcopy">' +
-          "<ul>" + s.desc.map(function (d) { return "<li>" + d + "</li>"; }).join("") +
-        "</ul></div>" +
+        '<div class="prose snippetcopy">' + bullets(s.desc, 1) + "</div>" +
         '<div class="codewrap"><div class="codebar"><span class="fname">' +
           esc(s.id) + "." + esc(s.lang) + "</span><span>" + s.code.split("\n").length +
           ' 行</span><span class="right"><button class="btn primary" id="btnCopy">复制这段代码</button></span>' +
@@ -322,13 +376,19 @@
         "</div>" +
       "</header>";
 
-    // 本页涉及的概念（点进概念页）
+    // 本页涉及的概念（最多露 6 个，其余统一去概念索引 —— 别把一行塞满）
     if (p.concepts && p.concepts.length) {
+      var MAXC = 6;
+      var shown = p.concepts.slice(0, MAXC);
       h += '<div class="kwrow"><span class="kwlabel">本文涉及的概念</span>' +
-        p.concepts.map(function (cid) {
+        shown.map(function (cid) {
           return CON[cid] ? '<a class="kwchip" href="#/k/' + cid + '">' + esc(CON[cid].name) +
             "</a>" : "";
-        }).join("") + "</div>";
+        }).join("") +
+        (p.concepts.length > MAXC
+          ? '<a class="kwchip" href="#/idx">还有 ' + (p.concepts.length - MAXC) +
+            " 个概念 →</a>"
+          : "") + "</div>";
     }
 
     h += '<div class="tabs" role="tablist" aria-label="内容切换" id="tabs">' +
@@ -339,9 +399,12 @@
           esc(kv[1]) + "</a>";
       }).join("") + '<div class="tab-rule" aria-hidden="true"></div></div>';
 
-    h += '<section id="panel-doc" class="panel prose"' +
-      (tab === "doc" ? "" : " hidden") + ">" +
-      (p.doc || '<p class="placeholder">这道题暂无文档。</p>') + "</section>";
+    h += '<section id="panel-doc" class="panel"' + (tab === "doc" ? "" : " hidden") + ">" +
+      '<div class="docgrid">' +
+        '<div class="prose">' +
+          (p.doc || '<p class="placeholder">这道题暂无文档。</p>') + "</div>" +
+        tocHtml(p) +
+      "</div></section>";
     h += '<section id="panel-anim" class="panel"' + (tab === "anim" ? "" : " hidden") +
       "></section>";
     h += '<section id="panel-src" class="panel"' + (tab === "src" ? "" : " hidden") +
@@ -518,6 +581,7 @@
     viewEl.innerHTML = h;
     renderList(qEl.value);
     if (wasProblem) {
+      mountToc();
       mountAnim(r.slug);
       mountSrc(r.slug);
       var rule = viewEl.querySelector(".tab-rule");
