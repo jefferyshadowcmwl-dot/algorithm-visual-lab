@@ -180,28 +180,123 @@ def check_ids(idx):
     app = read(os.path.join(HERE, "assets", "app.js"))
     ids = set(re.findall(r'\$\("([^"]+)"\)', app))
     ids |= set(re.findall(r'getElementById\("([^"]+)"\)', app))
-    # 动态生成的那些 id（面板内自己注入的）单独列白名单
-    runtime = {"animFrame", "animReload", "fileSel", "btnStrip", "btnRaw",
-               "btnCopy", "codeLines"}
+    # 动态生成的 id（app.js 自己注入的 DOM）单独列白名单
+    runtime = {"panel-doc", "panel-anim", "panel-src", "animFrame", "animReload",
+               "fileSel", "btnStrip", "btnRaw", "btnCopy", "codeLines"}
     for i in sorted(ids - runtime):
         if ('id="%s"' % i) not in idx:
             bad("app.js 的 id", 'index.html 里没有 id="%s"' % i)
 
 
+def check_wiki(data):
+    """核对 wiki.js（分类 / 概念 / 片段）与 data.js（题目）之间的交叉引用。"""
+    wiki_path = os.path.join(HERE, "assets", "wiki.js")
+    if not os.path.isfile(wiki_path):
+        bad("assets/wiki.js", "文件不存在（先跑 build_site.py）")
+        return None
+    src = read(wiki_path)
+    m = re.search(r"window\.AVL_WIKI\s*=\s*(\{.*\});", src, re.S)
+    if not m:
+        bad("assets/wiki.js", "找不到 window.AVL_WIKI = {...}")
+        return None
+    wiki = json.loads(m.group(1))
+    slugs = set(p["slug"] for p in data)
+
+    cats = wiki.get("categories", [])
+    cons = wiki.get("concepts", [])
+    snips = wiki.get("snippets", [])
+    if len(cats) < 3:
+        bad("wiki 分类", "只有 %d 个分类" % len(cats))
+    if len(cons) < 8:
+        bad("wiki 概念", "只有 %d 个概念（太少，联动会很空）" % len(cons))
+    if not snips:
+        bad("wiki 片段", "没有代码片段")
+
+    cat_ids = set(c["id"] for c in cats)
+    con_ids = set(c["id"] for c in cons)
+    snip_ids = set(s["id"] for s in snips)
+    if len(cat_ids) != len(cats):
+        bad("wiki 分类", "分类 id 有重复")
+    if len(con_ids) != len(cons):
+        bad("wiki 概念", "概念 id 有重复")
+
+    # 分类全覆盖且不重复（每题恰好一个主分类）
+    owner = {}
+    for c in cats:
+        for s in c["problems"]:
+            if s not in slugs:
+                bad("wiki 分类", "%s 引用了不存在的题目 %s" % (c["id"], s))
+            owner.setdefault(s, []).append(c["id"])
+    for s in slugs:
+        if len(owner.get(s, [])) != 1:
+            bad("wiki 分类", "题目 %s 的主分类数 = %d（应为 1）" % (s, len(owner.get(s, []))))
+    for p in data:
+        if not p.get("catId") or p["catId"] not in cat_ids:
+            bad("题目 catId", "%s 的 catId=%r 不在分类表里" % (p["slug"], p.get("catId")))
+
+    # 概念：关联题目、相关概念都要存在；至少 1 道题关联
+    for c in cons:
+        if not c.get("problems"):
+            bad("wiki 概念", "%s 没有关联题目" % c["id"])
+        for s in c["problems"]:
+            if s not in slugs:
+                bad("wiki 概念", "%s 引用了不存在的题目 %s" % (c["id"], s))
+        for k in c.get("see", []):
+            if k not in con_ids:
+                bad("wiki 概念", "%s 的相关概念 %s 不存在" % (c["id"], k))
+        if not c.get("def", "").strip():
+            bad("wiki 概念", "%s 没有一句话定义" % c["id"])
+
+    # 片段：关联题目存在、代码非空
+    for s in snips:
+        if not s.get("code", "").strip():
+            bad("wiki 片段", "%s 的代码是空的" % s["id"])
+        for sl in s["problems"]:
+            if sl not in slugs:
+                bad("wiki 片段", "%s 引用了不存在的题目 %s" % (s["id"], sl))
+
+    # 正文里自动生成的概念链接不得悬空（指向的概念必须存在）
+    dangling = set()
+    for p in data:
+        for cid in re.findall(r'href="#/k/([^"]+)"', p.get("doc", "")):
+            if cid not in con_ids:
+                dangling.add((p["slug"], cid))
+    for (slug, cid) in sorted(dangling):
+        bad("正文概念链接", "%s 链到了不存在的概念 %s" % (slug, cid))
+
+    # 每道题的 concepts / related / prev / next 结构要对
+    for p in data:
+        for cid in p.get("concepts", []):
+            if cid not in con_ids:
+                bad("题目 concepts", "%s 含未知概念 %s" % (p["slug"], cid))
+        for s in p.get("related", []):
+            if s not in slugs:
+                bad("题目 related", "%s 的相关题目 %s 不存在" % (p["slug"], s))
+        for key in ("prev", "next"):
+            if p.get(key) and p[key] not in slugs:
+                bad("题目 " + key, "%s 的 %s=%s 不存在" % (p["slug"], key, p[key]))
+
+    return {"cats": len(cats), "cons": len(cons), "snips": len(snips)}
+
+
 def check_slugs(idx):
-    """app.js 里拼的 problems/<slug>/... 路径，slug 必须与目录一一对应。"""
+    """题目目录必须齐活：每个 slug 下都要有 sources.js 与 animation.html。
+
+    【为什么不匹 app.js 里的拼装字符串】早先那版正则盯着 `"problems/" + p.slug + ...`
+    的写法，后来 app.js 换用 `slug` 变量拼路径，正则就对不上了 —— 空报一次 FAIL。
+    改成**直接核对实际生成的文件**：不管前端怎么拼路径，文件都得在。
+    """
     app = read(os.path.join(HERE, "assets", "app.js"))
-    used = set(re.findall(r'"problems/"\s*\+\s*p\.slug\s*\+\s*"/([a-z_]+\.html)"', app))
+    if '"problems/"' not in app:
+        bad("app.js 的路径", "app.js 里找不到 problems/ 前缀 —— 路径是不是拼错了？")
     got = set(os.listdir(os.path.join(HERE, "problems")))
-    if not used:
-        bad("app.js 的路径", "没找到 problems/<slug>/... 的拼装（改过路径写法？）")
     for d in sorted(got):
         if not os.path.isdir(os.path.join(HERE, "problems", d)):
             continue
-        for must in ("sources.js",):
+        for must in ("sources.js", "animation.html"):
             if not os.path.isfile(os.path.join(HERE, "problems", d, must)):
                 bad("problems/" + d, "缺少 " + must)
-    return used, got
+    return got
 
 
 def check_anim_selfcontained(slugs):
@@ -215,6 +310,28 @@ def check_anim_selfcontained(slugs):
             if url.startswith("http://www.w3.org/"):        # SVG 命名空间声明，不产生请求
                 continue
             bad("动画自包含 " + slug, "发现外部引用：" + url[:60])
+
+
+def check_anim_theme(slugs):
+    """动画必须是**站点统一的深色主题**（这是"资源风格统一"的硬要求）。
+
+    判据两条：
+      ① 必须出现统一底色的令牌 `#0b1120`（深色画布）；
+      ② 不得残留各题原来的浅色渐变底色（那些是"各弹各调"的痕迹）。
+    这样以后谁把某份动画改回浅色，核对脚本会立刻拦住。
+    """
+    LIGHT_OLD = ["#fef3c7", "#e8f5e9", "#e0f2fe", "#fff8e1", "#e0f7fa", "#f3e5f5",
+                 "#fffdf7", "#f5fffe", "#f1f8e9", "#fff3e0", "#f0fdf4", "#eff6ff"]
+    for slug in slugs:
+        p = os.path.join(HERE, "problems", slug, "animation.html")
+        if not os.path.isfile(p):
+            continue
+        s = read(p).lower()
+        if "#0b1120" not in s:
+            bad("动画主题 " + slug, "找不到统一底色 #0b1120 —— 没换成深色主题？")
+        left = [c for c in LIGHT_OLD if c in s]
+        if left:
+            bad("动画主题 " + slug, "仍残留旧浅色底：" + ", ".join(left[:4]))
 
 
 def check_filenames():
@@ -276,10 +393,14 @@ def main():
     check_ids(idx)
     # 6) 目录对得上
     check_slugs(idx)
-    # 7) 动画自包含
+
+    # 7) 动画自包含 + 深色主题统一
     check_anim_selfcontained([p["slug"] for p in data])
+    check_anim_theme([p["slug"] for p in data])
     # 8) 文件名干净
     check_filenames()
+    # 9) wiki 交叉引用（分类/概念/片段 ↔ 题目，以及正文里的概念链接不悬空）
+    w = check_wiki(data)
 
     if FAIL:
         print("FAIL: %d 处" % len(FAIL))
@@ -288,7 +409,10 @@ def main():
         return 1
 
     print("OK: %d 题 | 源码 %d 份（去注释版全部可解析、无残留注释）| "
-          "index 引用与 id 全部可解析 | 动画 10 份零外部引用 | 文件名干净"
+          "index 引用与 id 全部可解析 | 动画 10 份零外部引用 | 文件名干净 | "
+          "wiki：分类 %d / 概念 %d / 片段 %d，交叉引用全通、无悬空链接"
+          % (len(data), n_src, w["cats"], w["cons"], w["snips"]) if w else
+          "OK: %d 题 | 源码 %d 份 | index 引用与 id 可解析 | 动画零外链 | 文件名干净 | wiki 缺失"
           % (len(data), n_src))
     return 0
 

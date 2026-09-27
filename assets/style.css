@@ -317,3 +317,140 @@ pre.lines .ln.is-comment > .t { color: #5f7191; }
 @media (prefers-reduced-motion: reduce) {
   * { transition-duration: 1ms !important; animation-duration: 1ms !important; }
 }
+
+/* ==========================================================================
+   wiki 视图：面包屑 / 概念链接 / 卡片 / 搜索下拉 / 翻页
+   ========================================================================== */
+
+/* 目录项现在是 <a>，去掉下划线 */
+a.item, a.tab, a.card, a.kwchip, a.navlink, .kw { text-decoration: none; }
+a.card:hover, a.kwchip:hover { text-decoration: none; }
+
+/* 面包屑 */
+.crumb {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  font: 12.5px var(--mono); color: var(--fg-mute); margin-bottom: 14px;
+}
+.crumb a { color: var(--fg-dim); }
+.crumb a:hover { color: var(--accent-fg); }
+.crumb .sep { color: #3a4864; }
+.crumb [aria-current] { color: var(--fg); }
+
+/* 正文里的概念链接（自动生成的联动） */
+.prose a.kw, .kw {
+  color: var(--accent-fg);
+  border-bottom: 1px dashed var(--accent-line);
+  padding-bottom: 1px;
+}
+.prose a.kw:hover { border-bottom-style: solid; background: var(--accent-soft); }
+
+/* 概念 chip 行 */
+.kwrow {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  margin: 16px 0 0; padding: 12px 14px;
+  background: rgba(34, 197, 94, .05); border: 1px solid var(--line-soft);
+  border-radius: 12px;
+}
+.kwlabel { font: 600 12px var(--mono); color: var(--fg-mute); letter-spacing: .03em; }
+.kwchip {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-height: 34px; padding: 6px 12px; border-radius: 999px;
+  color: var(--fg-dim); background: var(--surface); border: 1px solid var(--line);
+  font: 600 13px var(--ui); transition: background var(--t), color var(--t), border-color var(--t);
+}
+.kwchip:hover { color: var(--fg); border-color: var(--accent-line); background: var(--surface-2); }
+.kwchip b {
+  font: 600 11.5px var(--mono); color: var(--accent-fg);
+  background: var(--accent-soft); border: 1px solid var(--accent-line);
+  border-radius: 999px; padding: 1px 7px;
+}
+.kwlist { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--fg-mute); font-size: 13px; }
+
+/* 区块标题 */
+.sect {
+  font-size: 13px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--fg-mute); font-weight: 600;
+  margin: 34px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--line-soft);
+  display: flex; align-items: baseline; gap: 10px;
+}
+.sect .hint { text-transform: none; letter-spacing: 0; font-weight: 400; color: #5d6b85; font-size: 12px; }
+
+/* 卡片网格 */
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.card {
+  display: block; padding: 15px 16px; border-radius: 12px;
+  background: var(--surface); border: 1px solid var(--line);
+  transition: border-color var(--t), background var(--t), transform var(--t);
+}
+.card:hover { border-color: var(--accent-line); background: var(--surface-2); transform: translateY(-2px); }
+.card h4 { margin: 0 0 8px; font-size: 14.5px; color: var(--fg); display: flex; gap: 8px; align-items: baseline; }
+.card h4 .cnt { font: 600 11.5px var(--mono); color: var(--accent-fg); margin-left: auto; white-space: nowrap; }
+.card p { margin: 0 0 6px; color: var(--fg-dim); font-size: 13px; line-height: 1.65; }
+.card p.mini { color: var(--fg-mute); font-size: 12px; margin: 0; }
+
+/* 搜索下拉 */
+.searchresult {
+  border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+  background: var(--surface); max-height: 46vh; overflow-y: auto;
+}
+.sres {
+  display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px;
+  align-items: baseline; padding: 10px 12px; min-height: 44px;
+  border-bottom: 1px solid var(--line-soft); color: var(--fg-dim);
+}
+.sres:last-child { border-bottom: 0; }
+.sres:hover { background: var(--surface-2); color: var(--fg); }
+.sres .kind {
+  font: 600 11px var(--mono); color: var(--fg-mute);
+  border: 1px solid var(--line); border-radius: 5px; text-align: center; padding: 2px 0;
+}
+.sres .sl { font-weight: 600; font-size: 13.5px; }
+.sres .sh { grid-column: 2; color: var(--fg-mute); font-size: 12px; }
+mark { background: rgba(34, 197, 94, .22); color: var(--accent-fg); border-radius: 3px; padding: 0 2px; }
+
+/* 侧栏知识导航 */
+.wiknav { display: flex; flex-direction: column; gap: 2px; margin-bottom: 4px; }
+.navhead {
+  font: 600 11px var(--mono); letter-spacing: .08em; text-transform: uppercase;
+  color: #5d6b85; padding: 6px 4px 2px;
+}
+.navlink {
+  display: flex; align-items: center; gap: 8px; min-height: 38px;
+  padding: 7px 10px; border-radius: 8px; color: var(--fg-dim); font-size: 13.5px;
+  transition: background var(--t), color var(--t);
+}
+.navlink:hover { background: rgba(255, 255, 255, .04); color: var(--fg); }
+.navlink b { margin-left: auto; font: 600 11.5px var(--mono); color: var(--accent-fg); }
+.navcats { display: flex; flex-direction: column; }
+.navlink.sub { padding-left: 20px; font-size: 13px; }
+
+/* 概念索引表里的迷你标签 */
+.tagcell { display: flex; flex-wrap: wrap; gap: 5px; white-space: normal; }
+.minitag {
+  font: 600 11.5px var(--ui); color: var(--fg-dim);
+  background: rgba(255, 255, 255, .05); border: 1px solid var(--line-soft);
+  border-radius: 6px; padding: 2px 7px;
+}
+.minitag:hover { color: var(--accent-fg); border-color: var(--accent-line); }
+
+/* 上下篇 */
+.pagerrow { display: flex; gap: 12px; margin-top: 28px; }
+.pager {
+  flex: 1 1 0; padding: 14px 16px; border-radius: 12px;
+  background: var(--surface); border: 1px solid var(--line);
+  color: var(--fg-dim); font-size: 13.5px;
+  transition: border-color var(--t), color var(--t);
+}
+.pager:hover { border-color: var(--accent-line); color: var(--fg); }
+.pager.next { text-align: right; }
+
+/* 概念页 / 片段页的正文 */
+.concept-body ul, .snippetcopy ul { margin: 0; padding-left: 20px; }
+.concept-body li, .snippetcopy li { margin: 10px 0; color: var(--fg-dim); line-height: 1.8; }
+.concept-body code, .snippetcopy code { font: 12.8px/1.5 var(--mono); background: rgba(255,255,255,.06);
+  border: 1px solid var(--line-soft); border-radius: 5px; padding: 2px 6px; color: var(--accent-fg); }
+.concept-body strong, .snippetcopy strong { color: var(--fg); }
+
+/* 深色动画（重配色后）放进画框：给个极淡的底，避免纯黑贴边 */
+.frame { background: #0b1120; }
+.frame iframe { background: #0b1120; }

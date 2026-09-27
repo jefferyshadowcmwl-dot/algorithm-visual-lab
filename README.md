@@ -1,69 +1,77 @@
 # 算法可视化实验室 · algorithm-visual-lab
 
-10 道经典算法题，每道都有**详细题解 + 可交互动画 + 可一键复制的源码**。
-纯静态站点：没有构建依赖、没有外部 CDN，双击 `index.html` 就能用，也能直接托管到 GitHub Pages / Gitee Pages / Vercel / Netlify。
+10 道经典算法题的**知识 wiki**：题解互相链接、每题都有可交互动画、源码可一键复制（默认去注释）。
+纯静态站点：零构建依赖、零外部 CDN，双击 `index.html` 就能用，也能直接托管到 GitHub Pages / Gitee Pages / Vercel / Netlify。
 
-**在线访问**：`https://<你的用户名>.github.io/algorithm-visual-lab/`（部署后替换）
+**在线访问**：https://jefferyshadowcmwl-dot.github.io/algorithm-visual-lab/
 
 ---
 
-## 它长什么样
+## 站点的四类页面（互相联动）
 
-左侧是编号目录（01–10），右侧每题三个标签页：
+| 页面 | 路由 | 说明 |
+|------|------|------|
+| 首页 | `#/` | 分类卡片 + 概念速览 + 代码片段入口 + 全部题目 |
+| **题目** | `#/p/<slug>/doc｜anim｜src` | 详解 / 动画 / 源码 三标签；带**面包屑**、**本文涉及的概念**、**相关题目**、**上一篇·下一篇** |
+| **分类** | `#/c/<catId>` | 该类题目 + **这一类共有的概念** |
+| **概念** | `#/k/<conceptId>` | 一句话定义 + 要点 + **哪些题用到了它（反向链接）** + 相关概念 + 相关代码片段 |
+| **代码片段** | `#/s[/<id>]` | 从 10 题里抽出的公共写法（读取器 / EOF 骨架 / 攒完输出 / tokenize 去注释）+ 用在哪些题里 |
+| 概念索引 | `#/idx` | 21 条概念 × 一句话 × 关联题目（全部可点） |
 
-| 标签 | 内容 |
-|------|------|
-| **详解** | 题意 → 判题格式怎么定的 → 算法思路 → 样例手推 → 复杂度 → **边界与陷阱** → 文件清单 → 参考用例 → 验证记录 |
-| **动画** | 嵌入该题的交互式动画（自包含单文件，支持自定义输入、单步/播放） |
-| **源码** | **去注释版**源码（一键复制）+ 可切回含注释的原版；另有详细版、C 版、验证脚本可选 |
+**联动是双向的**：题解正文里的概念关键词会**自动变成链接**（`EOF`、`哨兵`、`最小性`…），
+概念页再**反链**回所有用到它的题目 —— 可以顺着链接一路读下去。搜索框同时搜题目 / 概念 / 片段并高亮命中。
 
 几个刻意的设计：
 
-- **默认给去注释版**：贴到 OJ 上不用手删注释；需要看讲解时一键切回原版。
-- **懒加载**：动画的 `<iframe>` 与源码的 `<script>` 都是点开对应标签才加载 ——
-  首屏只拉 176 KB 数据，不会一上来就跑 10 个动画。
-- **可分享的深链**：`#/repunit/src` 这样的 hash 直接定位到"某题某标签"。
-- **离线可用**：10 份动画零外部引用（连字体都不联网），双击 HTML 就能跑。
+- **默认给去注释版源码**：贴到 OJ 上不用手删注释；需要看讲解时一键切回含注释的原版。
+- **懒加载**：动画的 `<iframe>` 与源码的 `<script>` 都只在切到对应标签时才加载 ——
+  首屏只拉 ~200 KB 数据，不会一上来就跑 10 个动画。
+- **可分享的深链**：`#/p/repunit/src`、`#/k/mutation-testing` 这样的 hash 直接定位。
+- **离线可用**：10 份动画是零外部引用的单文件，连字体都不联网。
 
 ---
 
 ## 本地打开
 
 ```bash
-# 方式一：直接双击（推荐，零依赖）
-start "" "E:\algorithm-visual-lab\index.html"
-
-# 方式二：起个本地服务（想看 http:// 下的效果）
-python -m http.server 8000
-# 然后访问 http://localhost:8000/
+start "" "E:\algorithm-visual-lab\index.html"     # 方式一：直接双击
+python -m http.server 8000                        # 方式二：起本地服务 → http://localhost:8000/
 ```
 
-## 重新生成（改完题目后）
+## 重新生成
 
 ```bash
-python build_site.py     # 从 E:\沈云付算法 抽取：详解转 HTML、源码去注释、动画拷贝
-python verify_site.py    # 核对：资源是否齐全、引用与 id 是否对得上、去注释是否干净
+python build_site.py     # 从 E:\沈云付算法 抽取：详解转 HTML、源码去注释、动画拷贝、生成 wiki.js
+python verify_site.py    # 核对：资源/引用/id/去注释/文件名 + wiki 交叉引用与悬空链接
 ```
 
-`build_site.py` 只重新生成"内容"（`assets/data.js` 与 `problems/*`），
+`wiki_data.py` 是**手写的知识实体**：分类、21 条概念（定义 + 关联题目 + 相关概念）、4 段代码片段。
+`build_site.py` 只重新生成内容（`assets/data.js`、`assets/wiki.js`、`problems/*`），
 **不会覆盖**手写的 `index.html` / `assets/style.css` / `assets/app.js`。
+
+构建时会做一次**反向核对**：概念里手写的反链，必须能在对应题解正文里找到关键词支撑 ——
+对不上就打印出来（免得"反链说这题讲了它，正文里其实没讲"）。当前状态：**全部对得上**。
 
 ## 部署到 GitHub Pages
 
 ```bash
-git init -b main
-git add .
-git commit -m "站点：10 道算法题的详解 + 动画 + 可复制源码"
-git remote add origin https://github.com/<用户名>/algorithm-visual-lab.git
-git push -u origin main
+git push -u origin main        # 常规做法（需要能访问 github.com）
 ```
 
-然后：仓库 **Settings → Pages → Source: Deploy from a branch → main / (root) → Save**。
-一两分钟后访问 `https://<用户名>.github.io/algorithm-visual-lab/`。
-（`nojekyll` 文件已就位，避免 Pages 的 Jekyll 处理中文目录名。）
+⚠️ **本机曾遇到 `github.com` 主域被拦**（`api.github.com` 正常），那时改用 API 部署：
 
-> 更新站点后如果看不到新版，先按 **Ctrl+F5** 强刷 —— 资源带 `?v=<构建时间戳>`，
-> 正常刷新即可生效，强刷是兜底。
+```bash
+python deploy_github.py <token 文件路径>          # 建仓库（若不存在）→ 上传全部文件 → 开启 Pages
+python deploy_github.py <token 文件路径> --preflight   # 只体检：账号/权限/仓库/Pages 状态
+```
+
+它用 Git Data API 一次性提交、并轮询 Pages 构建状态；**不打印 token**、也不把它写进任何文件。
+细粒度 token 需要 `Contents: Read and write`（开 Pages 还需 `Pages: Read and write`）；
+classic token 勾 `repo` 即可。首次部署空仓库时，脚本会先用 Contents API 种一个初始提交
+（空仓库上 Git Data API 会返回 409）。
+
+推完后：仓库 **Settings → Pages → Source: Deploy from a branch → main / (root) → Save**。
+看不到新版先按 **Ctrl+F5**（资源带 `?v=<构建时间戳>`，正常刷新即可生效）。
 
 ---
 
@@ -71,16 +79,19 @@ git push -u origin main
 
 ```
 algorithm-visual-lab/
-├── index.html              站点入口（手写）
+├── index.html              站点外壳（手写）
 ├── assets/
 │   ├── style.css           样式（手写，深色瑞士网格）
-│   ├── app.js              前端逻辑（手写：路由 / 懒加载 / 复制）
-│   └── data.js             ★ 构建生成：10 题的元数据 + 渲染好的详解 HTML
+│   ├── app.js              前端：多视图路由 / 懒加载 / 复制 / 搜索（手写）
+│   ├── data.js             ★ 构建生成：题目元数据 + 详解 HTML（含自动概念链接）
+│   └── wiki.js             ★ 构建生成：分类 / 概念 / 代码片段
 ├── problems/<slug>/
-│   ├── animation.html      ★ 构建生成：该题动画（原样拷贝，自包含单文件）
+│   ├── animation.html      ★ 构建生成：该题动画（自包含单文件，深色主题）
 │   └── sources.js          ★ 构建生成：该题源码（去注释版 + 原版）
-├── build_site.py           构建脚本（从 E:\沈云付算法 抽取内容）
-├── verify_site.py          站点核对脚本（8 类检查）
+├── wiki_data.py            手写的知识实体（分类 / 概念 / 片段）
+├── build_site.py           构建脚本
+├── verify_site.py          站点核对脚本（9 类检查）
+├── deploy_github.py        走 API 的部署脚本（github.com 被拦时的备用通道）
 ├── nojekyll                GitHub Pages 用（关掉 Jekyll）
 └── README.md
 ```
@@ -89,16 +100,16 @@ algorithm-visual-lab/
 
 | # | 题目 | 分类 | 关键点 |
 |---|------|------|--------|
-| 01 | 过河问题 | 贪心 + DP | 两种过河策略取小 |
+| 01 | 过河问题 | 贪心 | 两种过河策略取小 |
 | 02 | 均分纸牌 | 贪心 | 前缀缺口；详细版方案不得出现负数堆 |
 | 03 | 数字三角形 | 动态规划 | 自底向上；H=0 哨兵结束；含负数 |
 | 04 | 最长公共子序列 | 动态规划 | 滚动数组；每组输出 2 行 |
 | 05 | 0/1 背包 | 动态规划 | 容量维必须**倒序**（正序=完全背包） |
 | 06 | 连通分支数 | 并查集 | 自环/重边不减分支；图之间空一行 |
 | 07 | 最小差 | 排序 + 双指针 | 下标互相独立；要 O(n log n) |
-| 08 | n 个 1 | 数论 · 秦九韶 | 模的是 **9m** 不是 m；别真造大数 |
-| 09 | 11 的余数 | 数论 · 逐位取模 | 80 位大数绝不转 int；注意负余数 |
-| 10 | 车厢调度 | 组合数学 | 卡特兰数；预处理查表 |
+| 08 | n 个 1 | 数论 | 模的是 **9m** 不是 m；别真造大数 |
+| 09 | 11 的余数 | 数论 | 80 位大数绝不转 int；注意负余数 |
+| 10 | 车厢调度 | 组合数学 | 卡特兰数；预处理查表后每组 O(1) |
 
 ---
 
@@ -108,11 +119,11 @@ algorithm-visual-lab/
 - **源码许可**：本仓库中的代码可自由复制、修改、使用（含商用），无需署名。
 - **如实说明**：
   - 每题目录下的 **C 实现从未编译验证** —— 生成这些代码的机器上没有任何 C 编译器，
-    只有一份"逐行转写成 Python 后与 Python 版对拍"的核对脚本（`verify_*_c_mirror.py`）。
+    只有一份"逐行转写成 Python 后与 Python 版对拍"的核对脚本。
   - **详细版**（`_detailed.py`）是本地学习用的，会输出过程与自校验，**不要提交到 OJ**。
-  - 「判题格式」一栏里标 **待核** 的题目，其输入输出约定尚未用 AC 代码反推确认。
-- **每题都自带验证脚本**：与暴力解对拍、端到端字节比对、边界用例、
-  以及（部分题目）**变异测试**（把代码故意改错，验证断言真的会失败）。
+  - 「判题格式」一栏标 **待核** 的题目，其输入输出约定尚未用 AC 代码反推确认。
+- **每题都自带验证脚本**：与暴力解对拍、端到端字节比对、边界用例，
+  以及（部分题目）**变异测试** —— 把代码故意改错，验证断言真的会失败。
 
 ---
 

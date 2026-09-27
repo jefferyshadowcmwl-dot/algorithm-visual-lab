@@ -6,62 +6,65 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
-    background: linear-gradient(135deg, #fff8e1 0%, #ffe0b2 100%);
-    min-height: 100vh; padding: 18px; color: #4e342e;
+    font-family: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    background: linear-gradient(160deg, #0e1628 0%, #0b1120 60%);
+    min-height: 100vh; padding: 18px; color: #e6edf7;
   }
   .container {
-    max-width: 1180px; margin: 0 auto; background: rgba(255,255,255,0.96);
-    border-radius: 16px; box-shadow: 0 8px 32px rgba(120,70,20,0.18); padding: 24px;
+    max-width: 1180px; margin: 0 auto; background: #111827;
+    border: 1px solid #24304a;
+    border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.55); padding: 24px;
   }
-  h1 { text-align: center; color: #4e342e; font-size: 25px; margin-bottom: 6px; }
-  .subtitle { text-align: center; color: #8d6e63; font-size: 13.5px; margin-bottom: 18px; }
+  h1 { text-align: center; color: #e6edf7; font-size: 25px; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: #a8b6cc; font-size: 13.5px; margin-bottom: 18px; }
 
   .controls { display:flex; gap:9px; justify-content:center; align-items:center;
               flex-wrap:wrap; margin-bottom:10px; }
   input#inp {
-    width: 110px; padding: 8px 12px; border-radius: 8px; border: 1px solid #ffcc80;
-    font-size: 14px; font-family: Consolas, monospace; color:#4e342e; background:#fff;
+    width: 110px; padding: 8px 12px; border-radius: 8px; border: 1px solid #24304a;
+    font-size: 14px; font-family:"JetBrains Mono", "Cascadia Code", Consolas, monospace;
+    color:#e6edf7; background:#172033;
     text-align:center;
   }
-  input#inp:focus { outline:none; border-color:#f57c00; box-shadow:0 0 0 3px rgba(245,124,0,.18); }
+  input#inp:focus { outline:none; border-color:#38bdf8; box-shadow:0 0 0 3px rgba(56,189,248,.22); }
   button {
-    padding: 8px 14px; border-radius: 8px; border: 1px solid #ffcc80;
-    background:#fff; color:#e65100; font-size:14px; cursor:pointer; transition: all .18s;
+    padding: 8px 14px; border-radius: 8px; border: 1px solid #24304a;
+    background:#172033; color:#e6edf7; font-size:14px; cursor:pointer; transition: all .18s;
   }
-  button:hover { background:#ffb74d; color:#fff; transform: translateY(-1px); }
-  button.primary { background:#ef6c00; color:#fff; border-color:#e65100; }
-  button.primary:hover { background:#e65100; }
+  button:hover { background:#1c2740; color:#e6edf7; transform: translateY(-1px); }
+  button.primary { background:#38bdf8; color:#0b1120; border-color:#0ea5e9; }
+  button.primary:hover { background:#7dd3fc; }
   button:disabled { opacity:.45; cursor:not-allowed; transform:none; }
   button.mini { padding:5px 10px; font-size:12.5px; }
 
-  .presets { text-align:center; margin-bottom:12px; font-size:13px; color:#8d6e63;
+  .presets { text-align:center; margin-bottom:12px; font-size:13px; color:#a8b6cc;
              display:flex; gap:6px; justify-content:center; flex-wrap:wrap; align-items:center; }
-  .error { color:#c62828; text-align:center; min-height:20px; margin-bottom:8px; font-size:14px; }
+  .error { color:#f87171; text-align:center; min-height:20px; margin-bottom:8px; font-size:14px; }
 
   /* ---------- 三栏舞台 ---------- */
   .stage { display: flex; align-items: stretch; justify-content: center;
            gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-  .lane { flex: 1 1 0; min-width: 190px; border: 1px dashed #ffcc80; border-radius: 12px;
-          background: #fffdf7; padding: 8px 10px 10px; }
-  .lane-title { font-size: 12.5px; color: #8d6e63; text-align: center; margin-bottom: 8px;
+  .lane { flex: 1 1 0; min-width: 190px; border: 1px dashed #24304a; border-radius: 12px;
+          background: #172033; padding: 8px 10px 10px; }
+  .lane-title { font-size: 12.5px; color: #a8b6cc; text-align: center; margin-bottom: 8px;
                 font-weight: 700; letter-spacing: 1px; }
   .flow { display:flex; align-items:center; justify-content:center; flex-direction:column;
-          font-size:12px; color:#a1887f; min-width: 58px; }
+          font-size:12px; color:#7c8aa3; min-width: 58px; }
   .flow .big { font-size: 18px; line-height: 22px; }
 
   .row { display: flex; gap: 6px; justify-content: center; align-items: center;
          min-height: 46px; flex-wrap: wrap; }
   .stackcol { display: flex; flex-direction: column-reverse; gap: 6px;
               justify-content: flex-start; align-items: center; min-height: 46px;
-              padding-bottom: 4px; border-bottom: 3px solid #bcaaa4;
+              padding-bottom: 4px; border-bottom: 3px solid #24304a;
               width: 100%; max-width: 120px; margin: 0 auto; }
-  .stackcol .hint { font-size: 11.5px; color:#bcaaa4; }
+  .stackcol .hint { font-size: 11.5px; color:#7c8aa3; }
 
   .car {
     width: 38px; height: 38px; line-height: 34px; text-align: center;
-    border-radius: 8px; border: 2px solid #a1887f; background: #efebe9; color: #5d4037;
-    font-weight: 700; font-size: 16px; font-family: Consolas, monospace;
+    border-radius: 8px; border: 2px solid #24304a; background: #0f1626; color: #a8b6cc;
+    font-weight: 700; font-size: 16px;
+    font-family:"JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
     transition: transform .18s, background .18s, border-color .18s, color .18s;
   }
   .car.fresh { animation: pop .32s ease-out; }
@@ -70,39 +73,42 @@
     70%  { transform: scale(1.18); opacity: 1; }
     100% { transform: scale(1); }
   }
-  .car.in-stack { background:#d7ccc8; border-color:#8d6e63; }
-  .car.out { background:#a5d6a7; border-color:#43a047; color:#1b5e20; }
-  .car.hot { background:#ffb74d; border-color:#ef6c00; color:#fff;
+  .car.in-stack { background:rgba(56,189,248,.14); border-color:rgba(56,189,248,.5); color:#38bdf8; }
+  .car.out { background:rgba(34,197,94,.14); border-color:rgba(34,197,94,.5); color:#22c55e; }
+  .car.hot { background:#f59e0b; border-color:#fbbf24; color:#0b1120;
              transform: translateY(-4px) scale(1.1);
-             box-shadow: 0 6px 14px rgba(239,108,0,.35); }
+             box-shadow: 0 0 0 3px rgba(245,158,11,.5), 0 6px 14px rgba(0,0,0,.6); }
 
   /* ---------- 状态条 ---------- */
   .stepbar { text-align:center; font-size:14px; min-height: 46px; padding: 11px 14px;
-             background:#fff3e0; border-radius: 10px; border-left: 5px solid #ffb74d;
-             color:#6d4c41; margin-bottom: 12px; line-height: 1.6; }
-  .stepbar b { color:#e65100; }
+             background:#172033; border-radius: 10px; border-left: 5px solid #38bdf8;
+             color:#a8b6cc; margin-bottom: 12px; line-height: 1.6; }
+  .stepbar b { color:#e6edf7; }
 
   .panel { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:14px; }
   .stat { min-width: 132px; padding: 9px 14px; border-radius: 10px;
-          background:#fff8e1; border:1px solid #ffcc80; text-align:center; }
-  .stat .lbl { display:block; font-size:12px; color:#8d6e63; margin-bottom:2px; }
-  .stat .val { font-size:20px; font-weight:700; color:#4e342e; font-family: Consolas, monospace; }
-  .stat.ans { background:#ef6c00; border-color:#e65100; }
-  .stat.ans .lbl, .stat.ans .val { color:#fff; }
+          background:#172033; border:1px solid #24304a; text-align:center; }
+  .stat .lbl { display:block; font-size:12px; color:#a8b6cc; margin-bottom:2px; }
+  .stat .val { font-size:20px; font-weight:700; color:#e6edf7;
+               font-family:"JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace; }
+  .stat.ans { background:#22c55e; border-color:#4ade80; }
+  .stat.ans .lbl, .stat.ans .val { color:#052e16; }
 
   /* ---------- 全部输出序列 ---------- */
-  .seqbox { border:1px solid #ffe0b2; border-radius:10px; padding:12px 16px;
-            background:#fffdf7; margin-bottom:14px; font-size:13.5px; color:#6d4c41; }
-  .seqbox .ttl { font-weight:700; color:#4e342e; margin-bottom:6px; }
-  .seqbox .seq { font-family: Consolas, monospace; display:inline-block;
-                 background:#fff3e0; border:1px solid #ffe0b2; border-radius:6px;
+  .seqbox { border:1px solid #24304a; border-radius:10px; padding:12px 16px;
+            background:#111827; margin-bottom:14px; font-size:13.5px; color:#a8b6cc; }
+  .seqbox .ttl { font-weight:700; color:#e6edf7; margin-bottom:6px; }
+  .seqbox .seq { font-family:"JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+                 display:inline-block;
+                 background:#172033; border:1px solid #24304a; border-radius:6px;
                  padding:2px 8px; margin:3px 5px 3px 0; }
 
-  .formula { background:#fffdf7; border:1px solid #ffe0b2; border-radius:10px;
-             padding:12px 16px; font-size:13.5px; line-height:1.85; color:#6d4c41; }
-  .formula .ttl { font-weight:700; color:#4e342e; margin-bottom:4px; }
-  .formula code { font-family: Consolas, monospace; background:#fff3e0;
-                  padding:1px 5px; border-radius:4px; color:#e65100; }
+  .formula { background:#172033; border:1px solid #24304a; border-radius:10px;
+             padding:12px 16px; font-size:13.5px; line-height:1.85; color:#a8b6cc; }
+  .formula .ttl { font-weight:700; color:#e6edf7; margin-bottom:4px; }
+  .formula code { font-family:"JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+                  background:#111827;
+                  padding:1px 5px; border-radius:4px; color:#e6edf7; }
 </style>
 </head>
 <body>
@@ -113,7 +119,7 @@
   </p>
 
   <div class="controls">
-    <span style="font-size:13.5px;color:#8d6e63;">n =</span>
+    <span style="font-size:13.5px;color:#a8b6cc;">n =</span>
     <input id="inp" type="text" value="3" maxlength="3">
     <button id="btnLoad" class="primary">载入</button>
     <button id="btnNext">下一步</button>

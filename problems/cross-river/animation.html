@@ -4,31 +4,45 @@
 <meta charset="UTF-8">
 <title>过河问题动画演示</title>
 <style>
+  :root {
+    --bg: #0b1120; --bg-2: #0f172a;
+    --surface: #111827; --surface-2: #172033;
+    --line: #24304a; --line-soft: #1c2740;
+    --fg: #e6edf7; --fg-dim: #a8b6cc; --fg-mute: #7c8aa3;
+    --cur: #f59e0b; --cur-soft: rgba(245,158,11,.16); --cur-line: rgba(245,158,11,.42);
+    --ok: #22c55e; --ok-fg: #4ade80; --ok-soft: rgba(34,197,94,.14); --ok-line: rgba(34,197,94,.38);
+    --info: #38bdf8; --info-fg: #7dd3fc; --info-soft: rgba(56,189,248,.16); --info-line: rgba(56,189,248,.45);
+    --danger: #f87171;
+    --ui: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
-    background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+    font-family: var(--ui);
+    font-variant-numeric: tabular-nums;
+    background: linear-gradient(180deg, #0b1120 0%, #0a0f1c 100%);
     min-height: 100vh;
     padding: 20px;
-    color: #1a3a52;
+    color: var(--fg);
   }
   .container {
     max-width: 1200px;
     margin: 0 auto;
-    background: rgba(255,255,255,0.92);
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0,80,120,0.18);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 18px 50px rgba(0,0,0,0.35);
     padding: 28px;
   }
   h1 {
     text-align: center;
-    color: #00695c;
+    color: var(--fg);
     margin-bottom: 8px;
     font-size: 28px;
   }
   .subtitle {
     text-align: center;
-    color: #607d8b;
+    color: var(--fg-dim);
     margin-bottom: 22px;
     font-size: 14px;
   }
@@ -42,36 +56,37 @@
   }
   button, input, select {
     padding: 8px 14px;
-    border-radius: 8px;
-    border: 1px solid #80cbc4;
-    background: #fff;
-    color: #00695c;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--fg);
     font-size: 14px;
+    font-family: inherit;
     cursor: pointer;
     transition: all 0.2s;
   }
-  button:hover { background: #4db6ac; color: #fff; transform: translateY(-1px); }
+  button:hover { background: #1c2740; border-color: #33415c; color: var(--fg); transform: translateY(-1px); }
   button:disabled { opacity: 0.4; cursor: not-allowed; }
-  button.primary { background: #00897b; color: #fff; border-color: #00796b; }
-  button.primary:hover { background: #00796b; }
+  button.primary { background: var(--ok); color: #04140a; border-color: #16a34a; }
+  button.primary:hover { background: #2ee06a; }
   .speed-group { display: flex; gap: 4px; align-items: center; }
-  .speed-group label { font-size: 13px; color: #455a64; }
+  .speed-group label { font-size: 13px; color: var(--fg-dim); }
 
-  /* 河流区域 */
+  /* 河流区域（深色画布上的「夜景渡口」：暗草坡 + 深水） */
   .scene {
     position: relative;
     width: 100%;
     height: 360px;
     background: linear-gradient(180deg,
-      #c8e6c9 0%,     /* 此岸草坡 */
-      #a5d6a7 12%,
-      #4fc3f7 12%,    /* 河水 */
-      #4fc3f7 88%,
-      #a5d6a7 88%,
-      #c8e6c9 100%);   /* 对岸草坡 */
+      #17251c 0%,     /* 此岸草坡 */
+      #131f18 12%,
+      #0c1a2c 12%,    /* 河水 */
+      #0c1a2c 88%,
+      #131f18 88%,
+      #17251c 100%);   /* 对岸草坡 */
     border-radius: 12px;
     overflow: hidden;
-    border: 2px solid #80cbc4;
+    border: 1px solid var(--line);
     margin-bottom: 20px;
   }
   .bank {
@@ -82,7 +97,7 @@
     align-items: center;
     padding: 0 16px;
     font-weight: bold;
-    color: #1b5e20;
+    color: var(--fg);
     font-size: 16px;
     z-index: 1;
     pointer-events: none;
@@ -95,7 +110,7 @@
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    color: rgba(255,255,255,0.4);
+    color: rgba(168,182,204,0.28);
     font-size: 28px;
     letter-spacing: 8px;
     pointer-events: none;
@@ -114,11 +129,12 @@
     font-weight: bold;
     font-size: 13px;
     text-align: center;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.55);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.45);
     transition: left 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95),
                 top 1.2s cubic-bezier(0.45, 0.05, 0.55, 0.95);
     z-index: 10;
-    border: 3px solid #fff;
+    border: 3px solid rgba(230,237,247,0.92);
     line-height: 1.1;
   }
   .person .label { font-size: 11px; opacity: 0.9; }
@@ -144,8 +160,9 @@
 
   /* 步骤说明区 */
   .step-info {
-    background: #f1f8e9;
-    border-left: 5px solid #7cb342;
+    background: var(--surface-2);
+    border: 1px solid var(--line-soft);
+    border-left: 5px solid var(--cur);
     padding: 14px 18px;
     border-radius: 8px;
     margin-bottom: 16px;
@@ -154,18 +171,19 @@
   .step-info .step-title {
     font-size: 18px;
     font-weight: bold;
-    color: #33691e;
+    color: var(--fg);
     margin-bottom: 6px;
   }
   .step-info .step-detail {
     font-size: 15px;
-    color: #455a64;
+    color: var(--fg-dim);
     line-height: 1.6;
   }
   .step-info .step-time {
     display: inline-block;
-    background: #ffeb3b;
-    color: #f57f17;
+    background: var(--cur-soft);
+    border: 1px solid var(--cur-line);
+    color: #fbbf24;
     padding: 2px 10px;
     border-radius: 12px;
     font-weight: bold;
@@ -177,7 +195,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #eceff1;
+    background: var(--surface-2);
+    border: 1px solid var(--line-soft);
     padding: 12px 18px;
     border-radius: 8px;
     margin-bottom: 16px;
@@ -185,24 +204,24 @@
   .timer {
     font-size: 22px;
     font-weight: bold;
-    color: #d84315;
+    color: var(--cur);
   }
   .step-counter {
-    color: #455a64;
+    color: var(--fg-dim);
     font-size: 14px;
   }
 
   /* 算法说明 */
   .algo-explain {
-    background: #fff8e1;
-    border: 1px solid #ffd54f;
+    background: var(--surface-2);
+    border: 1px solid var(--line-soft);
     border-radius: 8px;
     padding: 14px 18px;
     margin-bottom: 14px;
     font-size: 14px;
     line-height: 1.7;
   }
-  .algo-explain h3 { color: #f57f17; margin-bottom: 8px; }
+  .algo-explain h3 { color: var(--fg); margin-bottom: 8px; }
 
   /* 所有人列表 */
   .people-list {
@@ -214,15 +233,17 @@
   .people-list .chip {
     padding: 6px 12px;
     border-radius: 16px;
-    background: #b2dfdb;
-    color: #004d40;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--line);
+    color: var(--fg-dim);
     font-size: 13px;
   }
 
   /* 错误提示 */
   .error {
-    background: #ffcdd2;
-    color: #b71c1c;
+    background: rgba(248,113,113,.12);
+    border: 1px solid rgba(248,113,113,.38);
+    color: var(--danger);
     padding: 10px 14px;
     border-radius: 8px;
     margin-bottom: 10px;
@@ -280,7 +301,7 @@
   <div class="algo-explain">
     <h3>📖 算法核心（点击展开/收起）</h3>
     <details>
-      <summary style="cursor:pointer; color:#0288d1;">点击查看详细策略说明</summary>
+      <summary style="cursor:pointer; color:var(--info);">点击查看详细策略说明</summary>
       <p style="margin-top:10px;">
         把速度排序为 <b>a[0] ≤ a[1] ≤ … ≤ a[n-1]</b>，对最慢的两人有两种送走方式：
       </p>

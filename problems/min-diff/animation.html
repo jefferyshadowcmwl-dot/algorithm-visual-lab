@@ -4,65 +4,83 @@
 <meta charset="UTF-8">
 <title>最小差 · 排序 + 双指针 动画精讲</title>
 <style>
+  :root {
+    --bg: #0b1120; --bg-2: #0f172a;
+    --surface: #111827; --surface-2: #172033;
+    --line: #24304a; --line-soft: #1c2740;
+    --fg: #e6edf7; --fg-dim: #a8b6cc; --fg-mute: #7c8aa3;
+    --cur: #f59e0b; --cur-soft: rgba(245,158,11,.16); --cur-line: rgba(245,158,11,.42);
+    --ok: #22c55e; --ok-fg: #4ade80; --ok-soft: rgba(34,197,94,.14); --ok-line: rgba(34,197,94,.38);
+    --info: #38bdf8; --info-fg: #7dd3fc; --info-soft: rgba(56,189,248,.16); --info-line: rgba(56,189,248,.45);
+    --danger: #f87171;
+    --ui: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
-    background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%);
-    min-height: 100vh; padding: 18px; color: #01579b;
+    font-family: var(--ui);
+    font-variant-numeric: tabular-nums;
+    background: linear-gradient(180deg, #0b1120 0%, #0a0f1c 100%);
+    min-height: 100vh; padding: 18px; color: var(--fg);
   }
   .container {
-    max-width: 1180px; margin: 0 auto; background: rgba(255,255,255,0.96);
-    border-radius: 16px; box-shadow: 0 8px 32px rgba(3,80,140,0.18); padding: 24px;
+    max-width: 1180px; margin: 0 auto; background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,0.35); padding: 24px;
   }
-  h1 { text-align: center; color: #01579b; font-size: 25px; margin-bottom: 6px; }
-  .subtitle { text-align: center; color: #0277bd; font-size: 13.5px; margin-bottom: 18px; }
+  h1 { text-align: center; color: var(--fg); font-size: 25px; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: var(--fg-dim); font-size: 13.5px; margin-bottom: 18px; }
 
   .controls { display:flex; gap:9px; justify-content:center; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
   button, input, select {
-    padding: 8px 14px; border-radius: 8px; border: 1px solid #81d4fa;
-    background:#fff; color:#0277bd; font-size:14px; cursor:pointer; transition: all .18s;
+    padding: 8px 14px; border-radius: 9px; border: 1px solid var(--line);
+    background:var(--surface-2); color:var(--fg); font-size:14px; font-family: inherit;
+    cursor:pointer; transition: all .18s;
   }
-  button:hover { background:#4fc3f7; color:#fff; transform: translateY(-1px); }
-  button.primary { background:#039be5; color:#fff; border-color:#0277bd; }
-  button.primary:hover { background:#0277bd; }
-  .error { color:#c62828; text-align:center; min-height:20px; margin-bottom:8px; font-size:14px; }
+  button:hover { background:#1c2740; border-color:#33415c; color:var(--fg); transform: translateY(-1px); }
+  button.primary { background:var(--ok); color:#04140a; border-color:#16a34a; }
+  button.primary:hover { background:#2ee06a; }
+  input#seqInput { font-family: var(--mono); font-size: 13px; }
+  .error { color:var(--danger); text-align:center; min-height:20px; margin-bottom:8px; font-size:14px; }
 
   /* ---------- 两条数组 ---------- */
   .rowwrap { margin: 6px 0 4px; }
-  .rowlbl { display:inline-block; width:26px; font-weight:700; color:#01579b; font-size:15px; }
+  .rowlbl { display:inline-block; width:26px; font-weight:700; color:var(--fg); font-size:15px; }
   .row { display:inline-flex; gap:8px; flex-wrap:wrap; vertical-align:middle; }
   .cell {
     position: relative; min-width:52px; width:auto; padding:0 10px; height:44px; line-height:44px;
     border-radius:8px; text-align:center; font-weight:700; font-size:15px;
-    background:#fafafa; border:2px solid #e0e0e0; color:#78909c;
+    background:var(--surface-2); border:2px solid var(--line); color:var(--fg-dim);
   }
-  .cell .idx { position:absolute; top:-9px; left:6px; font-size:10px; color:#b0bec5; font-weight:400; }
-  .cell.dim    { background:#eceff1; border-color:#cfd8dc; color:#b0bec5; text-decoration:line-through; }
-  .cell.cur    { background:#039be5; border-color:#01579b; color:#fff; transform:scale(1.06); }
-  .cell.curB   { background:#8e24aa; border-color:#4a148c; color:#fff; transform:scale(1.06); }
-  /* 当前最优配对：金色内描边，**不抢底色**，可与 cur/curB/dim 叠加 */
-  .cell.ring   { box-shadow: inset 0 0 0 3px #ffb300; }
-  /* 差为 0：整格变绿（写在 .cur 之后，靠更高的特异度压过指针底色） */
-  .cell.hit, .cell.cur.hit, .cell.curB.hit { background:#43a047; border-color:#1b5e20; color:#fff; }
+  .cell .idx { position:absolute; top:-9px; left:6px; font-size:10px; color:var(--fg-mute); font-weight:400; }
+  .cell.dim    { background:var(--bg-2); border-color:var(--line-soft); color:var(--fg-mute); text-decoration:line-through; }
+  /* 指针：A 琥珀、B 蓝 —— 两种对比色，谁都没被谁吃掉 */
+  .cell.cur    { background:var(--cur); border-color:#d97706; color:#0b1120; transform:scale(1.06); }
+  .cell.curB   { background:var(--info); border-color:#0ea5e9; color:#04140a; transform:scale(1.06); }
+  /* 当前最优配对：绿色内描边，**不抢底色**，可与 cur/curB/dim 叠加 */
+  .cell.ring   { box-shadow: inset 0 0 0 3px var(--ok); }
+  /* 差为 0（收工）：整格变绿（写在 .cur 之后，靠更高的特异度压过指针底色） */
+  .cell.hit, .cell.cur.hit, .cell.curB.hit { background:var(--ok); border-color:#16a34a; color:#04140a; }
   .ptr { display:inline-block; width:26px; text-align:center; font-weight:700; }
-  .ptrA { color:#039be5; } .ptrB { color:#8e24aa; }
+  .ptrA { color:var(--cur); } .ptrB { color:var(--info); }
   .ptrow { height:20px; }
 
   /* ---------- 状态条 ---------- */
   .statusbar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;
-               padding:10px 14px; background:#e1f5fe; border-radius:9px;
-               margin:14px 0 12px; font-size:14px; color:#0277bd; }
-  .cur-diff { font-weight:700; font-size:17px; color:#0277bd; }
-  .answer { font-weight:700; font-size:18px; color:#01579b; }
+               padding:10px 14px; background:var(--surface-2); border:1px solid var(--line-soft);
+               border-radius:9px;
+               margin:14px 0 12px; font-size:14px; color:var(--fg-dim); }
+  .cur-diff { font-weight:700; font-size:17px; color:#fbbf24; }
+  .answer { font-weight:700; font-size:18px; color:var(--ok-fg); }
 
-  .explain { background:#fff8e1; border-left:5px solid #ffb300; border-radius:9px; padding:15px 18px; min-height:170px; }
-  .explain-title { font-weight:700; color:#ef6c00; margin-bottom:8px; font-size:15.5px; }
-  .explain-body { line-height:1.85; font-size:14px; color:#37474f; }
-  .explain-body b { color:#c62828; }
-  .explain-body .k { background:#e1f5fe; padding:1px 6px; border-radius:4px; color:#01579b; font-family:monospace; }
-  .explain-body .hl { color:#e65100; font-weight:700; }
+  .explain { background:var(--surface-2); border:1px solid var(--line-soft); border-left:5px solid var(--cur); border-radius:9px; padding:15px 18px; min-height:170px; }
+  .explain-title { font-weight:700; color:var(--fg); margin-bottom:8px; font-size:15.5px; }
+  .explain-body { line-height:1.85; font-size:14px; color:var(--fg-dim); }
+  .explain-body b { color:var(--fg); }
+  .explain-body .k { background:rgba(255,255,255,.06); border:1px solid var(--line-soft); padding:1px 6px; border-radius:4px; color:var(--ok-fg); font-family:var(--mono); font-size:12.8px; }
+  .explain-body .hl { color:#fbbf24; font-weight:700; }
 
-  .legend { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:12px; font-size:12.5px; color:#0277bd; }
+  .legend { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:12px; font-size:12.5px; color:var(--fg-dim); }
   .legend i { display:inline-block; width:13px; height:13px; border-radius:3px; margin-right:5px; vertical-align:-2px; border:1.5px solid; }
 </style>
 </head>
@@ -115,12 +133,12 @@
   </div>
 
   <div class="legend">
-    <span><i style="background:#fafafa;border-color:#e0e0e0"></i>候选元素</span>
-    <span><i style="background:#039be5;border-color:#01579b"></i>A 的指针 i</span>
-    <span><i style="background:#8e24aa;border-color:#4a148c"></i>B 的指针 j</span>
-    <span><i style="background:#fff;border-color:#ffb300;box-shadow:inset 0 0 0 2px #ffb300"></i>当前最优配对</span>
-    <span><i style="background:#43a047;border-color:#1b5e20"></i>差为 0（收工）</span>
-    <span><i style="background:#eceff1;border-color:#cfd8dc"></i>已淘汰（划掉）</span>
+    <span><i style="background:var(--surface-2);border-color:var(--line)"></i>候选元素</span>
+    <span><i style="background:var(--cur);border-color:#d97706"></i>A 的指针 i</span>
+    <span><i style="background:var(--info);border-color:#0ea5e9"></i>B 的指针 j</span>
+    <span><i style="background:var(--surface-2);border-color:var(--line);box-shadow:inset 0 0 0 2px var(--ok)"></i>当前最优配对</span>
+    <span><i style="background:var(--ok);border-color:#16a34a"></i>差为 0（收工）</span>
+    <span><i style="background:var(--bg-2);border-color:var(--line-soft)"></i>已淘汰（划掉）</span>
   </div>
 </div>
 
@@ -263,7 +281,7 @@ function drawRow(rowId, ptrId, orig, sorted, st, which) {
     cell.childNodes[0].textContent = (st.sorted ? ("[" + (c3 + 1) + "]") : ("原" + (c3 + 1)));
     cell.childNodes[1].nodeValue = String(arr[c3]);
 
-    /* 类名要能**叠加**：指针底色 + 最优配对的金色描边可以同时出现。
+    /* 类名要能**叠加**：指针底色 + 最优配对的绿色描边可以同时出现。
        ⚠️ 不能像早先那样用 best/hit 直接覆盖 cur —— 当正在比较的那一格
           恰好也是当前最优配对时，指针的底色会被顶掉，读图的人就看不出
           "这一刻在比哪两格"了（本轮 Chrome 实拍 + 断言一起抓到的）。 */
@@ -344,7 +362,7 @@ function updateExplain() {
       D.innerHTML =
         "比 " + k("A[" + (cur.i + 1) + "] = " + av) + " 与 " + k("B[" + (cur.j + 1) + "] = " + bv) +
         "，差 = " + k("|" + av + " − " + bv + "| = " + cur.diff) + "。" +
-        (cur.improved ? "<b>刷新了迄今最小差</b>（金色标出这一对）。" : "没有比 " + st.best + " 更小。") + "<br>" +
+        (cur.improved ? "<b>刷新了迄今最小差</b>（绿色描边标出这一对）。" : "没有比 " + st.best + " 更小。") + "<br>" +
         "接下来要丢弃一个：这里 <b>" + small + "</b> 的那一方偏小，所以<b>它已经没机会了</b> ——<br>" +
         "&nbsp;&nbsp;因为对方是升序的，往后每个元素只会<b>更大</b>，" +
         "拿它们去配这个小的元素，差只会<b>越来越大</b>。<br>" +

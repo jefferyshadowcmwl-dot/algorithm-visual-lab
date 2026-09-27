@@ -27,6 +27,8 @@ import shutil
 import sys
 import tokenize
 
+import wiki_data as WD
+
 SRC_ROOT = r"E:\沈云付算法"
 OUT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -69,6 +71,104 @@ MAIN_NAME = {
     "min-diff": "min_diff", "repunit": "repunit", "mod11": "mod11",
     "catalan": "catalan",
 }
+
+# 概念关键词：正文里出现这些词，就把它链到对应概念页（每篇文档只链第一次）。
+# 这些词同时也是"这篇文档真的讲了那个概念吗"的判据 —— 用来反向核对
+# wiki_data 里手写的反链，免得两边各说各话（对不上会在构建时打印出来）。
+KEYWORDS = {
+    "eof": ["EOF"],
+    "sentinel": ["哨兵"],
+    "t-cases": ["T 组", "Case i"],
+    "blank-line": ["空一行"],
+    "reader": ["readline", "make_reader", "读取器"],
+    "batch-output": ["一起输出", "一次性输出"],
+    "tail-newline": ["行尾"],
+    "no-bigint": ["大数", "4300 位", "80 位", "long long", "大整数"],
+    "mod-9m": ["9m"],
+    "minimality": ["最小性"],
+    "negative-pile": ["负数堆"],
+    "reverse-capacity": ["倒序"],
+    "self-loop": ["自环"],
+    "out-of-range": ["越界", "伪答案"],
+    "negative-value": ["负数"],
+    "index-independent": ["下标独立", "下标互相独立"],
+    "two-pointers": ["双指针"],
+    "loop-bound": ["上界"],
+    "small-preprocess": ["预处理", "Cat("],
+    "mutation-testing": ["变异测试"],
+    "adversarial-audit": ["审计"],
+}
+
+SPLIT_CODE = re.compile(r"(<pre[\s\S]*?</pre>|<code>[\s\S]*?</code>)", re.I)
+
+
+def concept_of_problem(slug):
+    """按 wiki_data.CATEGORIES 反查题目的主分类（分类表是唯一真源）。"""
+    for (cid, _name, _desc, slugs) in WD.CATEGORIES:
+        if slug in slugs:
+            return cid
+    return None
+
+
+def plain_text(html):
+    """把渲染好的 HTML 剥成纯文本，用于"这篇到底讲没讲这个"的核对。
+
+    【为什么要脱标签】上一版直接拿 linkify 的命中来核对，结果**被代码格式误导**：
+    `readline()` 这种词出现在反引号里（<code>），而 linkify 有意跳过代码段，
+    于是"讲过了"被判成"没讲" ✗。核对就该在纯文本上做。
+    """
+    txt = re.sub(r"<[^>]+>", "", html)
+    for a, b in (("&lt;", "<"), ("&gt;", ">"), ("&amp;", "&"), ("&quot;", '"')):
+        txt = txt.replace(a, b)
+    return txt
+
+
+def linkify(html, curated_ids):
+    """把正文里第一次出现的概念关键词变成指向概念页的链接。
+
+    只链**人工反链里已认可**的概念（`curated_ids`）：
+    关键词命中只当"这篇有没有提到它"的粗筛，正文里出现"不是 EOF"这种对比句时
+    不该被链走 —— 那是错的联动。准确性优先于覆盖率。
+
+    另外只在**代码块之外**替换（`<pre>` / `<code>` 里的词是示例代码，链走容易误点）。
+    """
+    hit = []
+    parts = SPLIT_CODE.split(html)
+    for idx in range(0, len(parts), 2):            # 偶数位 = 非代码片段
+        seg = parts[idx]
+        if not seg:
+            continue
+        for cid in curated_ids:
+            if cid in hit:
+                continue
+            for w in KEYWORDS.get(cid, []):
+                pos = seg.find(w)
+                if pos < 0:
+                    continue
+                # 已经处在标签属性里（如 href="..."）就不动，避免破坏 HTML
+                if seg.rfind("<", 0, pos) > seg.rfind(">", 0, pos):
+                    continue
+                seg = (seg[:pos] + '<a class="kw" href="#/k/' + cid + '" title="概念：'
+                       + cid + '">' + w + "</a>" + seg[pos + len(w):])
+                hit.append(cid)
+                break
+        parts[idx] = seg
+    return "".join(parts)
+
+
+def related_problems(slug, concepts_by_problem, all_slugs, top=3):
+    """相关题目：先按"共享概念数"排，再看是否同分类。"""
+    mine = set(concepts_by_problem.get(slug, []))
+    my_cat = concept_of_problem(slug)
+    scored = []
+    for other in all_slugs:
+        if other == slug:
+            continue
+        shared = len(mine & set(concepts_by_problem.get(other, [])))
+        same_cat = 1 if concept_of_problem(other) == my_cat else 0
+        scored.append((shared * 2 + same_cat, shared, same_cat, other))
+    scored.sort(key=lambda x: (-x[0], x[3]))
+    return [o for (sc, sh, ca, o) in scored[:top] if sc > 0]
 
 
 # ---------------------------------------------------------------- 去注释
@@ -331,6 +431,7 @@ def md_to_html(md):
 # ---------------------------------------------------------------- 组装
 def build():
     data = []
+    kw_hits_by_problem = {}
     problems_dir = os.path.join(OUT_ROOT, "problems")
     if os.path.isdir(problems_dir):
         shutil.rmtree(problems_dir)
@@ -360,7 +461,12 @@ def build():
             if f.endswith("详解.md"):
                 doc_name = f
                 md = io.open(os.path.join(src_dir, f), encoding="utf-8").read()
-                doc_html = md_to_html(md)
+                raw_html = md_to_html(md)
+                # 这篇按人工反链该链哪些概念
+                curated = [cid for (cid, _n, _d, _b, slugs, _see) in WD.CONCEPTS
+                           if slug in slugs]
+                doc_html = linkify(raw_html, curated)
+                kw_hits_by_problem[slug] = (curated, plain_text(raw_html))
                 break
 
         # 源码：去注释版 + 原版
@@ -389,12 +495,76 @@ def build():
 
         data.append({
             "slug": slug, "dir": dirname, "title": title, "cat": cat,
+            "catId": concept_of_problem(slug),
             "cx": cx, "fmt": fmt, "summary": summary,
             "docName": doc_name, "doc": doc_html, "hasAnim": has_anim,
             "files": [s["file"] for s in srcs],
         })
         print("[OK] %-12s %-10s 详解 %-22s 动画 %-3s 源码 %d 个"
               % (slug, dirname, doc_name or "（缺）", "有" if has_anim else "无", len(srcs)))
+
+    # ---- 联动：概念反链 / 相关题目 / 上下篇 ----
+    all_slugs = [p["slug"] for p in data]
+    concepts_by_problem = {}
+    for p in data:
+        s = p["slug"]
+        concepts_by_problem[s] = sorted(kw_hits_by_problem.get(s, ([], ""))[0])
+        p["concepts"] = concepts_by_problem[s]
+    for i, p in enumerate(data):
+        p["prev"] = all_slugs[i - 1] if i > 0 else None
+        p["next"] = all_slugs[i + 1] if i + 1 < len(all_slugs) else None
+        p["related"] = related_problems(p["slug"], concepts_by_problem, all_slugs)
+
+    # ---- 反向核对：人工反链名单 vs 那篇正文（纯文本）里到底提没提 ----
+    # 只查这个方向：人工反链是"声明"，正文必须能找到支撑。
+    # 反方向（正文提到但没列）**故意不查** —— "不是 EOF / 不是哨兵"这种对比句会大量误报。
+    issues = []
+    for (cid, name, _d, _b, slugs, _see) in WD.CONCEPTS:
+        if cid in getattr(WD, "GLOBAL_CONCEPTS", set()):
+            continue                      # 全题通用：不逐题核正文（见 wiki_data 注释）
+        words = KEYWORDS.get(cid, [])
+        for s in slugs:
+            if s not in kw_hits_by_problem:
+                issues.append("反链里的 slug 在题目表里不存在：%s -> %s" % (cid, s))
+                continue
+            _cur, plain = kw_hits_by_problem[s]
+            if words and not any(w in plain for w in words):
+                issues.append("%-18s 反链列了 %-12s，但正文里找不到关键词「%s」"
+                              % (cid, s, " / ".join(words)))
+    covered = {}
+    for (cid, _n, _d, slugs) in WD.CATEGORIES:
+        for s in slugs:
+            covered.setdefault(s, []).append(cid)
+    for p in data:
+        got = covered.get(p["slug"], [])
+        if len(got) != 1:
+            issues.append("分类覆盖异常：%s 落在 %s" % (p["slug"], got or "（无）"))
+
+    wiki = {
+        "categories": [{"id": cid, "name": name, "desc": inline(desc), "problems": slugs}
+                       for (cid, name, desc, slugs) in WD.CATEGORIES],
+        "concepts": [{"id": cid, "name": name, "def": inline(defn),
+                      "body": [inline(x) for x in body],
+                      "problems": slugs, "see": see}
+                     for (cid, name, defn, body, slugs, see) in WD.CONCEPTS],
+        "snippets": [{"id": sid, "name": name, "lang": lang,
+                      "desc": [inline(x) for x in desc],
+                      "code": "\n".join(code), "problems": slugs}
+                     for (sid, name, lang, desc, code, slugs) in WD.SNIPPETS],
+    }
+    wjs = ("/* 知识实体（构建时生成）：分类 / 概念 / 代码片段 */\nwindow.AVL_WIKI = "
+           + json.dumps(wiki, ensure_ascii=False, indent=1) + ";\n")
+    io.open(os.path.join(OUT_ROOT, "assets", "wiki.js"), "w", encoding="utf-8",
+            newline="\n").write(wjs)
+    print("wiki.js：分类 %d / 概念 %d / 片段 %d（%.0f KB）"
+          % (len(wiki["categories"]), len(wiki["concepts"]), len(wiki["snippets"]),
+             len(wjs.encode("utf-8")) / 1024.0))
+    if issues:
+        print("\n[!] 反链与正文对不上 %d 处（不影响构建，但应当修掉）：" % len(issues))
+        for x in issues[:20]:
+            print("    " + x)
+    else:
+        print("反链一致性：手写反链与正文关键词**全部对得上** ✓")
 
     js = ("/* 站点数据（构建时生成，别手改） */\nwindow.AVL_DATA = "
           + json.dumps(data, ensure_ascii=False, indent=1) + ";\n")

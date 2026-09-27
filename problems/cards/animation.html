@@ -4,47 +4,61 @@
 <meta charset="UTF-8">
 <title>均分纸牌动画演示</title>
 <style>
+  :root {
+    --bg: #0b1120; --bg-2: #0f172a;
+    --surface: #111827; --surface-2: #172033;
+    --line: #24304a; --line-soft: #1c2740;
+    --fg: #e6edf7; --fg-dim: #a8b6cc; --fg-mute: #7c8aa3;
+    --cur: #f59e0b; --cur-soft: rgba(245,158,11,.16); --cur-line: rgba(245,158,11,.42);
+    --ok: #22c55e; --ok-fg: #4ade80; --ok-soft: rgba(34,197,94,.14); --ok-line: rgba(34,197,94,.38);
+    --info: #38bdf8; --info-fg: #7dd3fc; --info-soft: rgba(56,189,248,.16); --info-line: rgba(56,189,248,.45);
+    --danger: #f87171;
+    --ui: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
-    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    font-family: var(--ui);
+    font-variant-numeric: tabular-nums;
+    background: linear-gradient(180deg, #0b1120 0%, #0a0f1c 100%);
     min-height: 100vh;
     padding: 20px;
-    color: #3e2723;
+    color: var(--fg);
   }
   .container {
     max-width: 1200px;
     margin: 0 auto;
-    background: rgba(255,255,255,0.94);
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(200,100,30,0.18);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 18px 50px rgba(0,0,0,0.35);
     padding: 28px;
   }
-  h1 { text-align: center; color: #bf360c; margin-bottom: 8px; font-size: 28px; }
-  .subtitle { text-align: center; color: #6d4c41; margin-bottom: 22px; font-size: 14px; }
+  h1 { text-align: center; color: var(--fg); margin-bottom: 8px; font-size: 28px; }
+  .subtitle { text-align: center; color: var(--fg-dim); margin-bottom: 22px; font-size: 14px; }
   .controls {
     display: flex; gap: 10px; justify-content: center; align-items: center;
     flex-wrap: wrap; margin-bottom: 18px;
   }
   button, input, select {
-    padding: 8px 14px; border-radius: 8px; border: 1px solid #ffab91;
-    background: #fff; color: #bf360c; font-size: 14px; cursor: pointer;
-    transition: all 0.2s;
+    padding: 8px 14px; border-radius: 9px; border: 1px solid var(--line);
+    background: var(--surface-2); color: var(--fg); font-size: 14px; font-family: inherit;
+    cursor: pointer; transition: all 0.2s;
   }
-  button:hover { background: #ff7043; color: #fff; transform: translateY(-1px); }
-  button.primary { background: #e64a19; color: #fff; border-color: #d84315; }
-  button.primary:hover { background: #d84315; }
+  button:hover { background: #1c2740; border-color: #33415c; color: var(--fg); transform: translateY(-1px); }
+  button.primary { background: var(--ok); color: #04140a; border-color: #16a34a; }
+  button.primary:hover { background: #2ee06a; }
   .speed-group { display: flex; gap: 4px; align-items: center; }
-  .speed-group label { font-size: 13px; color: #6d4c41; }
+  .speed-group label { font-size: 13px; color: var(--fg-dim); }
 
   /* 卡片堆展示区 */
   .scene {
     position: relative;
     width: 100%;
     min-height: 360px;
-    background: linear-gradient(180deg, #fff8e1 0%, #ffecb3 100%);
+    background: var(--surface-2);
     border-radius: 12px;
-    border: 2px solid #ffb74d;
+    border: 1px solid var(--line);
     padding: 30px 20px 20px;
     margin-bottom: 20px;
     display: flex;
@@ -60,11 +74,11 @@
     min-width: 90px; position: relative;
   }
   .pile-label {
-    font-size: 14px; font-weight: bold; color: #bf360c;
+    font-size: 14px; font-weight: bold; color: var(--fg);
     margin-bottom: 8px;
   }
   .pile-target {
-    font-size: 11px; color: #6d4c41; margin-bottom: 4px;
+    font-size: 11px; color: var(--fg-mute); margin-bottom: 4px;
   }
   .pile-stack {
     position: relative;
@@ -73,24 +87,26 @@
     display: flex; flex-direction: column-reverse;
     align-items: center;
     padding: 4px;
-    background: rgba(255,255,255,0.6);
-    border: 2px dashed #ffcc80;
+    background: var(--bg-2);
+    border: 2px dashed var(--line);
     border-radius: 8px;
-    transition: border-color 0.3s;
+    transition: border-color 0.3s, box-shadow 0.3s;
   }
-  .pile-stack.active { border-color: #e64a19; border-style: solid; }
-  .pile-stack.done { border-color: #66bb6a; border-style: solid; }
+  /* 正在处理的那一堆 → 琥珀 */
+  .pile-stack.active { border-color: var(--cur); border-style: solid; box-shadow: 0 0 0 3px var(--cur-soft); }
+  /* 已归位的那一堆 → 绿 */
+  .pile-stack.done { border-color: var(--ok); border-style: solid; box-shadow: inset 0 0 0 1px var(--ok-line); }
 
   /* 单张卡牌 */
   .card {
     width: 56px; height: 16px;
-    background: linear-gradient(180deg, #ff7043, #e64a19);
-    border: 1px solid #bf360c;
+    background: linear-gradient(180deg, #33415c, #2c3a58);
+    border: 1px solid var(--line);
     border-radius: 3px;
     margin-bottom: 1px;
-    color: #fff; font-size: 9px;
+    color: var(--fg-dim); font-size: 9px;
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.35);
     transition: opacity 0.4s, transform 0.6s cubic-bezier(0.5, 0, 0.5, 1);
   }
   .card.moving-out {
@@ -99,26 +115,28 @@
   .card.moving-in {
     opacity: 0; transform: translateY(30px) scale(0.5);
   }
+  /* 已经搬到位的那张（完成/命中）→ 绿 */
   .card.moved {
-    background: linear-gradient(180deg, #66bb6a, #43a047);
-    border-color: #2e7d32;
+    background: linear-gradient(180deg, #34d970, #22c55e);
+    border-color: #16a34a;
+    color: #04140a;
   }
 
   .pile-count {
-    margin-top: 8px; font-size: 16px; font-weight: bold; color: #bf360c;
+    margin-top: 8px; font-size: 16px; font-weight: bold; color: var(--fg);
   }
-  .pile-count.done { color: #2e7d32; }
+  .pile-count.done { color: var(--ok-fg); }
 
-  /* 飞行中的纸牌 */
+  /* 飞行中的纸牌（正在搬的那一张 → 琥珀） */
   .flying-card {
     position: absolute;
     width: 56px; height: 16px;
-    background: linear-gradient(180deg, #ffeb3b, #fbc02d);
-    border: 2px solid #f57f17;
+    background: linear-gradient(180deg, #fbbf24, #f59e0b);
+    border: 2px solid var(--cur);
     border-radius: 3px;
-    color: #f57f17; font-size: 10px; font-weight: bold;
+    color: #0b1120; font-size: 10px; font-weight: bold;
     display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.45), 0 0 0 3px var(--cur-soft);
     z-index: 100;
     pointer-events: none;
     transition: all 0.8s cubic-bezier(0.5, 0, 0.5, 1);
@@ -126,36 +144,39 @@
 
   /* 步骤说明 */
   .step-info {
-    background: #fff3e0;
-    border-left: 5px solid #ff7043;
+    background: var(--surface-2);
+    border: 1px solid var(--line-soft);
+    border-left: 5px solid var(--cur);
     padding: 14px 18px;
     border-radius: 8px;
     margin-bottom: 16px;
     min-height: 80px;
   }
-  .step-title { font-size: 18px; font-weight: bold; color: #bf360c; margin-bottom: 6px; }
-  .step-detail { font-size: 15px; color: #5d4037; line-height: 1.6; }
+  .step-title { font-size: 18px; font-weight: bold; color: var(--fg); margin-bottom: 6px; }
+  .step-detail { font-size: 15px; color: var(--fg-dim); line-height: 1.6; }
   .step-tag {
-    display: inline-block; background: #ffe082; color: #bf360c;
+    display: inline-block; background: var(--info-soft); color: var(--info-fg);
+    border: 1px solid var(--info-line);
     padding: 2px 10px; border-radius: 12px; font-weight: bold; margin-left: 8px;
   }
 
   /* 进度 */
   .progress {
     display: flex; justify-content: space-between; align-items: center;
-    background: #efebe9; padding: 12px 18px; border-radius: 8px; margin-bottom: 16px;
+    background: var(--surface-2); border: 1px solid var(--line-soft);
+    padding: 12px 18px; border-radius: 8px; margin-bottom: 16px;
   }
-  .timer { font-size: 22px; font-weight: bold; color: #d84315; }
-  .step-counter { color: #5d4037; font-size: 14px; }
+  .timer { font-size: 22px; font-weight: bold; color: var(--cur); }
+  .step-counter { color: var(--fg-dim); font-size: 14px; }
 
   /* 算法说明 */
   .algo-explain {
-    background: #fff8e1; border: 1px solid #ffcc80;
+    background: var(--surface-2); border: 1px solid var(--line-soft);
     border-radius: 8px; padding: 14px 18px; margin-bottom: 14px;
     font-size: 14px; line-height: 1.7;
   }
-  .algo-explain h3 { color: #bf360c; margin-bottom: 8px; }
-  .error { background: #ffcdd2; color: #b71c1c; padding: 10px 14px; border-radius: 8px; margin-bottom: 10px; }
+  .algo-explain h3 { color: var(--fg); margin-bottom: 8px; }
+  .error { background: rgba(248,113,113,.12); color: var(--danger); border: 1px solid rgba(248,113,113,.38); padding: 10px 14px; border-radius: 8px; margin-bottom: 10px; }
 </style>
 </head>
 <body>
@@ -199,7 +220,7 @@
   <div class="algo-explain">
     <h3>📖 算法核心（点击展开）</h3>
     <details>
-      <summary style="cursor:pointer; color:#0288d1;">点击查看详细策略说明</summary>
+      <summary style="cursor:pointer; color:var(--info);">点击查看详细策略说明</summary>
       <p style="margin-top:10px;">
         <b>目标</b>：让 N 堆纸牌每堆都等于平均值 avg = sum / N
       </p>

@@ -6,50 +6,52 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 55%, #fce7f3 100%);
-    min-height: 100vh; padding: 18px; color: #78350f;
+    font-family: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    background: linear-gradient(160deg, #0e1628 0%, #0b1120 60%);
+    min-height: 100vh; padding: 18px; color: #e6edf7;
   }
   .container {
-    max-width: 1240px; margin: 0 auto; background: rgba(255,255,255,0.97);
-    border-radius: 16px; box-shadow: 0 8px 32px rgba(120,53,15,0.16); padding: 22px;
+    max-width: 1240px; margin: 0 auto; background: #111827;
+    border: 1px solid #24304a;
+    border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.55); padding: 22px;
   }
   h1 { text-align: center; font-size: 25px; margin-bottom: 6px; }
-  .subtitle { text-align: center; color: #b45309; font-size: 13.5px; margin-bottom: 16px; }
+  .subtitle { text-align: center; color: #a8b6cc; font-size: 13.5px; margin-bottom: 16px; }
 
   .controls { display:flex; gap:9px; justify-content:center; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
   button, input, select, textarea {
-    padding: 8px 14px; border-radius: 8px; border: 1px solid #fcd34d;
-    background:#fff; color:#b45309; font-size:14px; cursor:pointer; transition: all .18s;
+    padding: 8px 14px; border-radius: 8px; border: 1px solid #24304a;
+    background:#172033; color:#e6edf7; font-size:14px; cursor:pointer; transition: all .18s;
     font-family: inherit;
   }
-  button:hover { background:#fbbf24; color:#fff; transform: translateY(-1px); }
-  button.primary { background:#d97706; color:#fff; border-color:#b45309; }
-  button.primary:hover { background:#b45309; }
-  textarea { width: 430px; height: 70px; cursor: text; font-family: Consolas, monospace; font-size: 13px; }
-  .error { color:#dc2626; text-align:center; min-height:20px; margin-bottom:6px; font-size:13.5px; }
+  button:hover { background:#1c2740; color:#e6edf7; transform: translateY(-1px); }
+  button.primary { background:#38bdf8; color:#0b1120; border-color:#0ea5e9; }
+  button.primary:hover { background:#7dd3fc; }
+  textarea { width: 430px; height: 70px; cursor: text; font-family:"JetBrains Mono", "Cascadia Code", Consolas, monospace; font-size: 13px; }
+  .error { color:#f87171; text-align:center; min-height:20px; margin-bottom:6px; font-size:13.5px; }
   .picks { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:10px; }
-  .picks button.on { background:#b45309; color:#fff; }
+  .picks button.on { background:#38bdf8; color:#0b1120; }
 
   /* ---------- 数字条（11...1） ---------- */
   .stripwrap { display:flex; align-items:center; gap:10px; justify-content:center;
                flex-wrap:wrap; margin-bottom:12px; }
   .digits { display:flex; gap:4px; flex-wrap:wrap; justify-content:center; }
   .digit { width:30px; height:36px; line-height:34px; text-align:center; font-weight:700;
-           font-size:15px; border-radius:7px; background:#fffbeb;
-           border:2px solid #fcd34d; color:#b45309; transition: all .18s; }
-  .digit.new { background:#f59e0b; border-color:#b45309; color:#fff; transform:scale(1.12); }
-  .digit.more { background:#f3f4f6; border-color:#d1d5db; color:#6b7280; font-size:13px;
+           font-size:15px; border-radius:7px; background:#172033;
+           border:2px solid #24304a; color:#e6edf7; transition: all .18s; }
+  .digit.new { background:#f59e0b; border-color:#fbbf24; color:#0b1120; transform:scale(1.12); }
+  .digit.more { background:#0f1626; border-color:#1c2740; color:#7c8aa3; font-size:13px;
                 width:auto; padding:0 10px; }
-  .badge { background:#fef3c7; border:2px solid #fcd34d; border-radius:999px;
-           padding:6px 14px; font-weight:700; color:#92400e; font-size:14px; }
+  .badge { background:#172033; border:2px solid #24304a; border-radius:999px;
+           padding:6px 14px; font-weight:700; color:#a8b6cc; font-size:14px; }
 
   /* ---------- 公式卡 ---------- */
-  .formula { text-align:center; background:#fffbeb; border:1px dashed #fcd34d;
+  .formula { text-align:center; background:#172033; border:1px dashed #24304a;
              border-radius:12px; padding:14px; margin-bottom:12px; font-size:15px; line-height:2; }
-  .formula .k { font-family: Consolas, monospace; background:#fff; border:1px solid #fde68a;
-                border-radius:5px; padding:2px 7px; color:#92400e; font-weight:700; }
-  .formula .zero { color:#059669; font-weight:700; }
+  .formula .k { font-family:"JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+                background:#111827; border:1px solid #24304a;
+                border-radius:5px; padding:2px 7px; color:#e6edf7; font-weight:700; }
+  .formula .zero { color:#22c55e; font-weight:700; }
   .formula .big { font-size:19px; }
 
   .main { display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; }
@@ -57,30 +59,32 @@
   .right { flex: 1 1 330px; min-width: 300px; }
 
   table.rem { border-collapse: separate; border-spacing: 3px; width:100%; }
-  table.rem th { background:#fffbeb; color:#b45309; border:2px solid #fde68a;
+  table.rem th { background:#172033; color:#a8b6cc; border:2px solid #24304a;
                  font-size:12.5px; padding:4px 2px; border-radius:6px; }
-  table.rem td { background:#fafafa; border:2px solid #e5e7eb; color:#64748b;
+  table.rem td { background:#0f1626; border:2px solid #1c2740; color:#a8b6cc;
                  font-size:12.5px; text-align:center; padding:3px 2px; border-radius:6px;
-                 font-family: Consolas, monospace; }
-  table.rem tr.cur td { background:#f59e0b; border-color:#b45309; color:#fff; font-weight:700; }
-  table.rem tr.hit td { background:#10b981; border-color:#047857; color:#fff; font-weight:700; }
-  table.rem tr.gap td { background:#f3f4f6; color:#9ca3af; font-style:italic; }
+                 font-family:"JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace; }
+  table.rem tr.cur td { background:#f59e0b; border-color:#fbbf24; color:#0b1120; font-weight:700; }
+  table.rem tr.hit td { background:#22c55e; border-color:#4ade80; color:#052e16; font-weight:700; }
+  table.rem tr.gap td { background:#0f1626; border-color:#1c2740; color:#7c8aa3; font-style:italic; }
 
   .statusbar { display:flex; justify-content:space-between; align-items:center; gap:10px;
-               padding:10px 14px; background:#fffbeb; border-radius:9px;
-               margin:12px 0; font-size:14px; color:#b45309; flex-wrap:wrap; }
-  .answer { font-weight:700; font-size:18px; color:#78350f; }
-  .cur { font-family: Consolas, monospace; font-weight:700; font-size:17px; color:#b45309; }
+               padding:10px 14px; background:#172033; border:1px solid #24304a; border-radius:9px;
+               margin:12px 0; font-size:14px; color:#a8b6cc; flex-wrap:wrap; }
+  .answer { font-weight:700; font-size:18px; color:#22c55e; }
+  .cur { font-family:"JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+         font-weight:700; font-size:17px; color:#f59e0b; }
 
-  .explain { background:#fffbeb; border-left:5px solid #f59e0b; border-radius:9px; padding:15px 18px; min-height:170px; }
-  .explain-title { font-weight:700; color:#b45309; margin-bottom:8px; font-size:15.5px; }
-  .explain-body { line-height:1.85; font-size:14px; color:#334155; }
-  .explain-body b { color:#dc2626; }
-  .explain-body .k { background:#fff; border:1px solid #fde68a; padding:1px 6px;
-                     border-radius:4px; color:#92400e; font-family:monospace; }
-  .explain-body .ok { color:#059669; font-weight:700; }
+  .explain { background:#172033; border-left:5px solid #38bdf8; border-radius:9px; padding:15px 18px; min-height:170px; }
+  .explain-title { font-weight:700; color:#f59e0b; margin-bottom:8px; font-size:15.5px; }
+  .explain-body { line-height:1.85; font-size:14px; color:#a8b6cc; }
+  .explain-body b { color:#e6edf7; }
+  .explain-body .k { background:#111827; border:1px solid #24304a; padding:1px 6px;
+                     border-radius:4px; color:#e6edf7;
+                     font-family:"JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace; }
+  .explain-body .ok { color:#22c55e; font-weight:700; }
 
-  .legend { display:flex; gap:13px; justify-content:center; flex-wrap:wrap; margin-top:12px; font-size:12.5px; color:#b45309; }
+  .legend { display:flex; gap:13px; justify-content:center; flex-wrap:wrap; margin-top:12px; font-size:12.5px; color:#a8b6cc; }
   .legend i { display:inline-block; width:13px; height:13px; border-radius:3px; margin-right:5px; vertical-align:-2px; border:1.5px solid; }
 </style>
 </head>
@@ -123,12 +127,12 @@
       </div>
     </div>
     <div class="right">
-      <div style="font-size:13px;color:#b45309;margin-bottom:6px;font-weight:700;">
+      <div style="font-size:13px;color:#a8b6cc;margin-bottom:6px;font-weight:700;">
         余数表（n → r = Aₙ mod m）
       </div>
       <table class="rem" id="remTable"></table>
-      <div style="font-size:12px;color:#64748b;margin-top:8px;line-height:1.6;">
-        r 一旦变成 <b style="color:#059669">0</b>，就说明这一串 1 被 m 整除了 ——
+      <div style="font-size:12px;color:#7c8aa3;margin-top:8px;line-height:1.6;">
+        r 一旦变成 <b style="color:#22c55e">0</b>，就说明这一串 1 被 m 整除了 ——
         那个 n 就是答案。整个过程**只保留余数**，所以永远不用去存那个上千位的巨数。
       </div>
     </div>
@@ -142,10 +146,10 @@
   </div>
 
   <div class="legend">
-    <span><i style="background:#fffbeb;border-color:#fcd34d"></i>已经添上的 1</span>
-    <span><i style="background:#f59e0b;border-color:#b45309"></i>这一步刚添的 1（位数太多时它落在省略区，看不到）</span>
-    <span><i style="background:#f3f4f6;border-color:#d1d5db"></i>省略的位数</span>
-    <span><i style="background:#10b981;border-color:#047857"></i>整除（答案）</span>
+    <span><i style="background:#172033;border-color:#24304a"></i>已经添上的 1</span>
+    <span><i style="background:#f59e0b;border-color:#fbbf24"></i>这一步刚添的 1（位数太多时它落在省略区，看不到）</span>
+    <span><i style="background:#0f1626;border-color:#1c2740"></i>省略的位数</span>
+    <span><i style="background:#22c55e;border-color:#4ade80"></i>整除（答案）</span>
   </div>
 </div>
 

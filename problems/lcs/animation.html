@@ -4,40 +4,56 @@
 <meta charset="UTF-8">
 <title>最长公共子序列 · 动画精讲</title>
 <style>
+  :root {
+    --bg: #0b1120; --bg-2: #0f172a;
+    --surface: #111827; --surface-2: #172033;
+    --line: #24304a; --line-soft: #1c2740;
+    --fg: #e6edf7; --fg-dim: #a8b6cc; --fg-mute: #7c8aa3;
+    --cur: #f59e0b; --cur-soft: rgba(245,158,11,.16); --cur-line: rgba(245,158,11,.42);
+    --ok: #22c55e; --ok-fg: #4ade80; --ok-soft: rgba(34,197,94,.14); --ok-line: rgba(34,197,94,.38);
+    --info: #38bdf8; --info-fg: #7dd3fc; --info-soft: rgba(56,189,248,.16); --info-line: rgba(56,189,248,.45);
+    --danger: #f87171;
+    --ui: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
-    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-    min-height: 100vh; padding: 18px; color: #0d47a1;
+    font-family: var(--ui);
+    font-variant-numeric: tabular-nums;
+    background: linear-gradient(180deg, #0b1120 0%, #0a0f1c 100%);
+    min-height: 100vh; padding: 18px; color: var(--fg);
   }
   .container {
-    max-width: 1180px; margin: 0 auto; background: rgba(255,255,255,0.96);
-    border-radius: 16px; box-shadow: 0 8px 32px rgba(20,60,140,0.18); padding: 24px;
+    max-width: 1180px; margin: 0 auto; background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,0.35); padding: 24px;
   }
-  h1 { text-align: center; color: #0d47a1; font-size: 25px; margin-bottom: 6px; }
-  .subtitle { text-align: center; color: #1976d2; font-size: 13.5px; margin-bottom: 18px; }
+  h1 { text-align: center; color: var(--fg); font-size: 25px; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: var(--fg-dim); font-size: 13.5px; margin-bottom: 18px; }
 
   .controls { display:flex; gap:9px; justify-content:center; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
-  button, select {
-    padding: 8px 14px; border-radius: 8px; border: 1px solid #90caf9;
-    background:#fff; color:#1565c0; font-size:14px; cursor:pointer; transition: all .18s;
+  button, input, select {
+    padding: 8px 14px; border-radius: 9px; border: 1px solid var(--line);
+    background:var(--surface-2); color:var(--fg); font-size:14px; font-family: inherit;
+    cursor:pointer; transition: all .18s;
   }
-  button:hover { background:#64b5f6; color:#fff; transform: translateY(-1px); }
-  button.primary { background:#1e88e5; color:#fff; border-color:#1565c0; }
-  button.primary:hover { background:#1565c0; }
-  .error { color:#c62828; text-align:center; min-height:20px; margin-bottom:8px; font-size:14px; }
+  button:hover { background:#1c2740; border-color:#33415c; color:var(--fg); transform: translateY(-1px); }
+  button.primary { background:var(--ok); color:#04140a; border-color:#16a34a; }
+  button.primary:hover { background:#2ee06a; }
+  input#seqInput { font-family: var(--mono); font-size: 13px; }
+  .error { color:var(--danger); text-align:center; min-height:20px; margin-bottom:8px; font-size:14px; }
 
   /* ---------- 两条序列 ---------- */
   .seqblock { display:flex; justify-content:center; gap:34px; flex-wrap:wrap; margin-bottom:14px; }
   .seq { display:flex; align-items:center; gap:6px; font-size:14px; }
-  .seq .lbl { font-weight:700; color:#0d47a1; margin-right:4px; }
+  .seq .lbl { font-weight:700; color:var(--fg); margin-right:4px; }
   .tok {
     min-width:30px; padding:4px 8px; border-radius:6px; text-align:center;
-    background:#eceff1; border:2px solid #cfd8dc; color:#546e7a; font-weight:700;
+    background:var(--surface-2); border:2px solid var(--line); color:var(--fg-dim); font-weight:700;
     transition: background .2s, border-color .2s, color .2s;
   }
-  .tok.hi { background:#ffb74d; border-color:#f57c00; color:#fff; }
-  .tok.used { background:#81c784; border-color:#388e3c; color:#fff; }
+  .tok.hi { background:var(--cur); border-color:#d97706; color:#0b1120; }    /* 正在处理的字符 */
+  .tok.used { background:var(--ok); border-color:#16a34a; color:#04140a; }   /* 已纳入子序列 */
 
   /* ---------- DP 网格 ---------- */
   .gridwrap { overflow-x:auto; padding: 6px 0 14px; }
@@ -48,36 +64,41 @@
     border-radius: 7px; transition: background .25s, border-color .25s, color .25s, transform .15s;
   }
   table.dp th {
-    background:#e3f2fd; color:#1565c0; border:2px solid #90caf9;
+    background:var(--surface-2); color:var(--fg-dim); border:2px solid var(--line);
   }
-  table.dp th.corner { background:#fff; border-color:#fff; color:#90a4ae; font-size:12px; }
+  table.dp th.corner { background:transparent; border-color:transparent; color:var(--fg-mute); font-size:12px; }
   table.dp td {
-    background:#fafafa; border:2px solid #e0e0e0; color:#bdbdbd;
+    background:var(--surface-2); border:2px solid var(--line); color:var(--fg-mute);
   }
-  td.empty   { background:#fafafa; border-color:#e0e0e0; color:#cfd8dc; }
-  td.border0 { background:#eceff1; border-color:#b0bec5; color:#546e7a; }   /* 第0行/列 */
-  td.filled  { background:#c8e6c9; border-color:#66bb6a; color:#1b5e20; }   /* 已算好 */
-  td.current { background:#1e88e5; border-color:#0d47a1; color:#fff; transform:scale(1.12);
-               box-shadow:0 0 0 4px rgba(30,136,229,.3); }
-  td.src     { background:#ffe082; border-color:#ffa000; color:#e65100; transform:scale(1.06); }  /* 左上/上/左 */
-  td.pick    { background:#66bb6a; border-color:#2e7d32; color:#fff; transform:scale(1.08); }    /* 被选用 */
-  td.path    { background:#ffd54f; border-color:#ff8f00; color:#e65100;
-               box-shadow:0 0 0 3px rgba(255,213,79,.55); }
+  /* ⚠️ 状态选择器必须带 table.dp 前缀：下面的 `table.dp td` 特异度(0,1,2) 高于
+     `td.filled`(0,1,1)，早先不带前缀时所有状态色都被它压掉、格子一律是底色，
+     「正在算/已算好/被选中」全看不出来（本轮实拍 + getComputedStyle 探针查出来的）。 */
+  table.dp td.empty   { background:var(--surface-2); border-color:var(--line-soft); color:var(--fg-mute); }
+  table.dp td.border0 { background:var(--bg-2); border-color:var(--line); color:var(--fg-dim); }      /* 第0行/列 */
+  table.dp td.filled  { background:var(--ok-soft); border-color:var(--ok-line); color:var(--ok-fg); }  /* 已算好 */
+  table.dp td.current { background:var(--cur); border-color:#d97706; color:#0b1120; transform:scale(1.12);
+                        box-shadow:0 0 0 4px rgba(245,158,11,.30); }                                  /* 正在算 */
+  table.dp td.src     { background:var(--info-soft); border-color:var(--info-line); color:var(--info-fg);
+                        transform:scale(1.06); }                                                      /* 左上/上/左 要看的三格 */
+  table.dp td.pick    { background:var(--ok); border-color:#16a34a; color:#04140a; transform:scale(1.08); }  /* 被选用的来源 */
+  table.dp td.path    { background:#4ade80; border-color:var(--ok); color:#04140a;
+                        box-shadow:0 0 0 3px rgba(74,222,128,.45); }                                  /* 回溯出的子序列 */
 
   /* ---------- 状态条 + 解说 ---------- */
   .statusbar { display:flex; justify-content:space-between; align-items:center;
-               padding:10px 14px; background:#e3f2fd; border-radius:9px;
-               margin-bottom:12px; font-size:14px; color:#1565c0; }
-  .answer { font-weight:700; font-size:18px; color:#0d47a1; }
+               padding:10px 14px; background:var(--surface-2); border:1px solid var(--line-soft);
+               border-radius:9px;
+               margin-bottom:12px; font-size:14px; color:var(--fg-dim); }
+  .answer { font-weight:700; font-size:18px; color:var(--ok-fg); }
 
-  .explain { background:#fff8e1; border-left:5px solid #ffb300; border-radius:9px; padding:15px 18px; min-height:150px; }
-  .explain-title { font-weight:700; color:#ef6c00; margin-bottom:8px; font-size:15.5px; }
-  .explain-body { line-height:1.85; font-size:14px; color:#37474f; }
-  .explain-body b { color:#c62828; }
-  .explain-body .k { background:#e3f2fd; padding:1px 6px; border-radius:4px; color:#0d47a1; font-family:monospace; }
-  .explain-body .hl { color:#e65100; font-weight:700; }
+  .explain { background:var(--surface-2); border:1px solid var(--line-soft); border-left:5px solid var(--cur); border-radius:9px; padding:15px 18px; min-height:150px; }
+  .explain-title { font-weight:700; color:var(--fg); margin-bottom:8px; font-size:15.5px; }
+  .explain-body { line-height:1.85; font-size:14px; color:var(--fg-dim); }
+  .explain-body b { color:var(--fg); }
+  .explain-body .k { background:rgba(255,255,255,.06); border:1px solid var(--line-soft); padding:1px 6px; border-radius:4px; color:var(--ok-fg); font-family:var(--mono); font-size:12.8px; }
+  .explain-body .hl { color:#fbbf24; font-weight:700; }
 
-  .legend { display:flex; gap:15px; justify-content:center; flex-wrap:wrap; margin-top:12px; font-size:12.5px; color:#1976d2; }
+  .legend { display:flex; gap:15px; justify-content:center; flex-wrap:wrap; margin-top:12px; font-size:12.5px; color:var(--fg-dim); }
   .legend i { display:inline-block; width:13px; height:13px; border-radius:3px; margin-right:5px; vertical-align:-2px; border:1.5px solid; }
 </style>
 </head>
@@ -124,12 +145,12 @@
   </div>
 
   <div class="legend">
-    <span><i style="background:#eceff1;border-color:#b0bec5"></i>边界(空序列)</span>
-    <span><i style="background:#c8e6c9;border-color:#66bb6a"></i>已算好</span>
-    <span><i style="background:#1e88e5;border-color:#0d47a1"></i>正在算</span>
-    <span><i style="background:#ffe082;border-color:#ffa000"></i>要看的三格(左上/上/左)</span>
-    <span><i style="background:#66bb6a;border-color:#2e7d32"></i>被选中的来源</span>
-    <span><i style="background:#ffd54f;border-color:#ff8f00"></i>回溯出的子序列</span>
+    <span><i style="background:var(--bg-2);border-color:var(--line)"></i>边界(空序列)</span>
+    <span><i style="background:var(--ok-soft);border-color:var(--ok-line)"></i>已算好</span>
+    <span><i style="background:var(--cur);border-color:#d97706"></i>正在算</span>
+    <span><i style="background:var(--info-soft);border-color:var(--info-line)"></i>要看的三格(左上/上/左)</span>
+    <span><i style="background:var(--ok);border-color:#16a34a"></i>被选中的来源</span>
+    <span><i style="background:#4ade80;border-color:var(--ok)"></i>回溯出的子序列</span>
   </div>
 </div>
 
