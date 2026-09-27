@@ -5,10 +5,10 @@
 <title>数字三角形 · 动画精讲</title>
 <style>
   :root {
-    --bg: #0b1120; --bg-2: #0f172a;
-    --surface: #111827; --surface-2: #172033;
-    --line: #24304a; --line-soft: #1c2740;
-    --fg: #e6edf7; --fg-dim: #a8b6cc; --fg-mute: #7c8aa3;
+    --bg: #0f0820; --bg-2: #130a24;
+    --surface: #1a0f2e; --surface-2: #21132e;
+    --line: #2c1b47; --line-soft: #241539;
+    --fg: #f5e8ff; --fg-dim: #d3c0ea; --fg-mute: #a895b3;
     --cur: #f59e0b; --cur-soft: rgba(245,158,11,.16); --cur-line: rgba(245,158,11,.42);
     --ok: #22c55e; --ok-fg: #4ade80; --ok-soft: rgba(34,197,94,.14); --ok-line: rgba(34,197,94,.38);
     --info: #38bdf8; --info-fg: #7dd3fc; --info-soft: rgba(56,189,248,.16); --info-line: rgba(56,189,248,.45);
@@ -20,7 +20,7 @@
   body {
     font-family: var(--ui);
     font-variant-numeric: tabular-nums;
-    background: linear-gradient(180deg, #0b1120 0%, #0a0f1c 100%);
+    background: linear-gradient(180deg, #0f0820 0%, #0b0616 100%);
     min-height: 100vh; padding: 20px; color: var(--fg);
   }
   .container {
@@ -37,7 +37,7 @@
     background:var(--surface-2); color:var(--fg); font-size:14px; font-family: inherit;
     cursor:pointer; transition: all .18s;
   }
-  button:hover { background:#1c2740; border-color:#33415c; color:var(--fg); transform: translateY(-1px); }
+  button:hover { background:#241539; border-color:#3a2359; color:var(--fg); transform: translateY(-1px); }
   button.primary { background:var(--ok); color:#04140a; border-color:#16a34a; }
   button.primary:hover { background:#2ee06a; }
   input#triInput { width: 300px; font-family: var(--mono); }
@@ -67,7 +67,7 @@
      蓝  =要看的那两格候选     绿=已算好（淡染）/ 被选中 / 最优路径（亮绿+光晕） */
   .cell.pending   { background:var(--surface-2); border-color:var(--line); color:var(--fg-mute); }   /* 还没算 */
   .cell.base      { background:var(--cur-soft); border-color:var(--cur-line); color:#fbbf24; }        /* 最后一行初始值 */
-  .cell.current   { background:var(--cur); border-color:#d97706; color:#0b1120; transform:scale(1.14); box-shadow:0 0 0 4px rgba(245,158,11,.30); }
+  .cell.current   { background:var(--cur); border-color:#d97706; color:#0f0820; transform:scale(1.14); box-shadow:0 0 0 4px rgba(245,158,11,.30); }
   .cell.candidate { background:var(--info); border-color:#0ea5e9; color:#04140a; transform:scale(1.07); }
   .cell.chosen    { background:var(--ok); border-color:#16a34a; color:#04140a; transform:scale(1.07); }
   .cell.done      { background:var(--ok-soft); border-color:var(--ok-line); color:var(--ok-fg); }

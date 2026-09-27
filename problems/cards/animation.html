@@ -5,10 +5,10 @@
 <title>均分纸牌动画演示</title>
 <style>
   :root {
-    --bg: #0b1120; --bg-2: #0f172a;
-    --surface: #111827; --surface-2: #172033;
-    --line: #24304a; --line-soft: #1c2740;
-    --fg: #e6edf7; --fg-dim: #a8b6cc; --fg-mute: #7c8aa3;
+    --bg: #0f0820; --bg-2: #130a24;
+    --surface: #1a0f2e; --surface-2: #21132e;
+    --line: #2c1b47; --line-soft: #241539;
+    --fg: #f5e8ff; --fg-dim: #d3c0ea; --fg-mute: #a895b3;
     --cur: #f59e0b; --cur-soft: rgba(245,158,11,.16); --cur-line: rgba(245,158,11,.42);
     --ok: #22c55e; --ok-fg: #4ade80; --ok-soft: rgba(34,197,94,.14); --ok-line: rgba(34,197,94,.38);
     --info: #38bdf8; --info-fg: #7dd3fc; --info-soft: rgba(56,189,248,.16); --info-line: rgba(56,189,248,.45);
@@ -20,7 +20,7 @@
   body {
     font-family: var(--ui);
     font-variant-numeric: tabular-nums;
-    background: linear-gradient(180deg, #0b1120 0%, #0a0f1c 100%);
+    background: linear-gradient(180deg, #0f0820 0%, #0b0616 100%);
     min-height: 100vh;
     padding: 20px;
     color: var(--fg);
@@ -45,7 +45,7 @@
     background: var(--surface-2); color: var(--fg); font-size: 14px; font-family: inherit;
     cursor: pointer; transition: all 0.2s;
   }
-  button:hover { background: #1c2740; border-color: #33415c; color: var(--fg); transform: translateY(-1px); }
+  button:hover { background: #241539; border-color: #3a2359; color: var(--fg); transform: translateY(-1px); }
   button.primary { background: var(--ok); color: #04140a; border-color: #16a34a; }
   button.primary:hover { background: #2ee06a; }
   .speed-group { display: flex; gap: 4px; align-items: center; }
@@ -100,7 +100,7 @@
   /* 单张卡牌 */
   .card {
     width: 56px; height: 16px;
-    background: linear-gradient(180deg, #33415c, #2c3a58);
+    background: linear-gradient(180deg, #3a2359, #33204d);
     border: 1px solid var(--line);
     border-radius: 3px;
     margin-bottom: 1px;
@@ -134,7 +134,7 @@
     background: linear-gradient(180deg, #fbbf24, #f59e0b);
     border: 2px solid var(--cur);
     border-radius: 3px;
-    color: #0b1120; font-size: 10px; font-weight: bold;
+    color: #0f0820; font-size: 10px; font-weight: bold;
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 4px 12px rgba(0,0,0,0.45), 0 0 0 3px var(--cur-soft);
     z-index: 100;

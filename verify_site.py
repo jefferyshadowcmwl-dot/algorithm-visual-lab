@@ -164,7 +164,8 @@ def check_index_refs():
     idx = read(os.path.join(HERE, "index.html"))
     refs = re.findall(r'(?:src|href)="([^"]+)"', idx)
     for r in refs:
-        if r.startswith(("http://", "https://", "about:", "#", "mailto:")):
+        # data: 是内联资源（favicon 用的内联 SVG），不是文件路径，别当缺文件
+        if r.startswith(("http://", "https://", "about:", "#", "mailto:", "data:")):
             continue
         path = r.split("?")[0]
         if not os.path.isfile(os.path.join(HERE, path)):
@@ -182,7 +183,9 @@ def check_ids(idx):
     ids |= set(re.findall(r'getElementById\("([^"]+)"\)', app))
     # 动态生成的 id（app.js 自己注入的 DOM）单独列白名单
     runtime = {"panel-doc", "panel-anim", "panel-src", "animFrame", "animReload",
-               "fileSel", "btnStrip", "btnRaw", "btnCopy", "codeLines"}
+               "fileSel", "btnStrip", "btnRaw", "btnCopy", "codeLines",
+               # 下面三个由 app.js 渲染视图时注入（canvas 层）
+               "heroGraph", "statProblems", "motif"}
     for i in sorted(ids - runtime):
         if ('id="%s"' % i) not in idx:
             bad("app.js 的 id", 'index.html 里没有 id="%s"' % i)
@@ -327,8 +330,8 @@ def check_anim_theme(slugs):
         if not os.path.isfile(p):
             continue
         s = read(p).lower()
-        if "#0b1120" not in s:
-            bad("动画主题 " + slug, "找不到统一底色 #0b1120 —— 没换成深色主题？")
+        if "#0f0820" not in s:
+            bad("动画主题 " + slug, "找不到统一底色 #0f0820（紫调宇宙）—— 没换成统一主题？")
         left = [c for c in LIGHT_OLD if c in s]
         if left:
             bad("动画主题 " + slug, "仍残留旧浅色底：" + ", ".join(left[:4]))

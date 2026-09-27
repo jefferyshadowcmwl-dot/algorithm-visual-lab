@@ -7,50 +7,50 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
-    background: linear-gradient(160deg, #0e1628 0%, #0b1120 60%);
-    min-height: 100vh; padding: 18px; color: #e6edf7;
+    background: linear-gradient(160deg, #160d20 0%, #0f0820 60%);
+    min-height: 100vh; padding: 18px; color: #f5e8ff;
   }
   .container {
-    max-width: 1240px; margin: 0 auto; background: #111827;
-    border: 1px solid #24304a;
+    max-width: 1240px; margin: 0 auto; background: #1a0f2e;
+    border: 1px solid #2c1b47;
     border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.55); padding: 22px;
   }
   h1 { text-align: center; font-size: 25px; margin-bottom: 6px; }
-  .subtitle { text-align: center; color: #a8b6cc; font-size: 13.5px; margin-bottom: 16px; }
+  .subtitle { text-align: center; color: #d3c0ea; font-size: 13.5px; margin-bottom: 16px; }
 
   .controls { display:flex; gap:9px; justify-content:center; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
   button, input, select, textarea {
-    padding: 8px 14px; border-radius: 8px; border: 1px solid #24304a;
-    background:#172033; color:#e6edf7; font-size:14px; cursor:pointer; transition: all .18s;
+    padding: 8px 14px; border-radius: 8px; border: 1px solid #2c1b47;
+    background:#21132e; color:#f5e8ff; font-size:14px; cursor:pointer; transition: all .18s;
     font-family: inherit;
   }
-  button:hover { background:#1c2740; color:#e6edf7; transform: translateY(-1px); }
-  button.primary { background:#38bdf8; color:#0b1120; border-color:#0ea5e9; }
+  button:hover { background:#241539; color:#f5e8ff; transform: translateY(-1px); }
+  button.primary { background:#38bdf8; color:#0f0820; border-color:#0ea5e9; }
   button.primary:hover { background:#7dd3fc; }
   textarea { width: 430px; height: 70px; cursor: text; font-family:"JetBrains Mono", "Cascadia Code", Consolas, monospace; font-size: 13px; }
   .error { color:#f87171; text-align:center; min-height:20px; margin-bottom:6px; font-size:13.5px; }
   .picks { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:10px; }
-  .picks button.on { background:#38bdf8; color:#0b1120; }
+  .picks button.on { background:#38bdf8; color:#0f0820; }
 
   /* ---------- 数字条（11...1） ---------- */
   .stripwrap { display:flex; align-items:center; gap:10px; justify-content:center;
                flex-wrap:wrap; margin-bottom:12px; }
   .digits { display:flex; gap:4px; flex-wrap:wrap; justify-content:center; }
   .digit { width:30px; height:36px; line-height:34px; text-align:center; font-weight:700;
-           font-size:15px; border-radius:7px; background:#172033;
-           border:2px solid #24304a; color:#e6edf7; transition: all .18s; }
-  .digit.new { background:#f59e0b; border-color:#fbbf24; color:#0b1120; transform:scale(1.12); }
-  .digit.more { background:#0f1626; border-color:#1c2740; color:#7c8aa3; font-size:13px;
+           font-size:15px; border-radius:7px; background:#21132e;
+           border:2px solid #2c1b47; color:#f5e8ff; transition: all .18s; }
+  .digit.new { background:#f59e0b; border-color:#fbbf24; color:#0f0820; transform:scale(1.12); }
+  .digit.more { background:#150c26; border-color:#241539; color:#a895b3; font-size:13px;
                 width:auto; padding:0 10px; }
-  .badge { background:#172033; border:2px solid #24304a; border-radius:999px;
-           padding:6px 14px; font-weight:700; color:#a8b6cc; font-size:14px; }
+  .badge { background:#21132e; border:2px solid #2c1b47; border-radius:999px;
+           padding:6px 14px; font-weight:700; color:#d3c0ea; font-size:14px; }
 
   /* ---------- 公式卡 ---------- */
-  .formula { text-align:center; background:#172033; border:1px dashed #24304a;
+  .formula { text-align:center; background:#21132e; border:1px dashed #2c1b47;
              border-radius:12px; padding:14px; margin-bottom:12px; font-size:15px; line-height:2; }
   .formula .k { font-family:"JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
-                background:#111827; border:1px solid #24304a;
-                border-radius:5px; padding:2px 7px; color:#e6edf7; font-weight:700; }
+                background:#1a0f2e; border:1px solid #2c1b47;
+                border-radius:5px; padding:2px 7px; color:#f5e8ff; font-weight:700; }
   .formula .zero { color:#22c55e; font-weight:700; }
   .formula .big { font-size:19px; }
 
@@ -59,32 +59,32 @@
   .right { flex: 1 1 330px; min-width: 300px; }
 
   table.rem { border-collapse: separate; border-spacing: 3px; width:100%; }
-  table.rem th { background:#172033; color:#a8b6cc; border:2px solid #24304a;
+  table.rem th { background:#21132e; color:#d3c0ea; border:2px solid #2c1b47;
                  font-size:12.5px; padding:4px 2px; border-radius:6px; }
-  table.rem td { background:#0f1626; border:2px solid #1c2740; color:#a8b6cc;
+  table.rem td { background:#150c26; border:2px solid #241539; color:#d3c0ea;
                  font-size:12.5px; text-align:center; padding:3px 2px; border-radius:6px;
                  font-family:"JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace; }
-  table.rem tr.cur td { background:#f59e0b; border-color:#fbbf24; color:#0b1120; font-weight:700; }
+  table.rem tr.cur td { background:#f59e0b; border-color:#fbbf24; color:#0f0820; font-weight:700; }
   table.rem tr.hit td { background:#22c55e; border-color:#4ade80; color:#052e16; font-weight:700; }
-  table.rem tr.gap td { background:#0f1626; border-color:#1c2740; color:#7c8aa3; font-style:italic; }
+  table.rem tr.gap td { background:#150c26; border-color:#241539; color:#a895b3; font-style:italic; }
 
   .statusbar { display:flex; justify-content:space-between; align-items:center; gap:10px;
-               padding:10px 14px; background:#172033; border:1px solid #24304a; border-radius:9px;
-               margin:12px 0; font-size:14px; color:#a8b6cc; flex-wrap:wrap; }
+               padding:10px 14px; background:#21132e; border:1px solid #2c1b47; border-radius:9px;
+               margin:12px 0; font-size:14px; color:#d3c0ea; flex-wrap:wrap; }
   .answer { font-weight:700; font-size:18px; color:#22c55e; }
   .cur { font-family:"JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
          font-weight:700; font-size:17px; color:#f59e0b; }
 
-  .explain { background:#172033; border-left:5px solid #38bdf8; border-radius:9px; padding:15px 18px; min-height:170px; }
+  .explain { background:#21132e; border-left:5px solid #38bdf8; border-radius:9px; padding:15px 18px; min-height:170px; }
   .explain-title { font-weight:700; color:#f59e0b; margin-bottom:8px; font-size:15.5px; }
-  .explain-body { line-height:1.85; font-size:14px; color:#a8b6cc; }
-  .explain-body b { color:#e6edf7; }
-  .explain-body .k { background:#111827; border:1px solid #24304a; padding:1px 6px;
-                     border-radius:4px; color:#e6edf7;
+  .explain-body { line-height:1.85; font-size:14px; color:#d3c0ea; }
+  .explain-body b { color:#f5e8ff; }
+  .explain-body .k { background:#1a0f2e; border:1px solid #2c1b47; padding:1px 6px;
+                     border-radius:4px; color:#f5e8ff;
                      font-family:"JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace; }
   .explain-body .ok { color:#22c55e; font-weight:700; }
 
-  .legend { display:flex; gap:13px; justify-content:center; flex-wrap:wrap; margin-top:12px; font-size:12.5px; color:#a8b6cc; }
+  .legend { display:flex; gap:13px; justify-content:center; flex-wrap:wrap; margin-top:12px; font-size:12.5px; color:#d3c0ea; }
   .legend i { display:inline-block; width:13px; height:13px; border-radius:3px; margin-right:5px; vertical-align:-2px; border:1.5px solid; }
 </style>
 </head>
@@ -127,11 +127,11 @@
       </div>
     </div>
     <div class="right">
-      <div style="font-size:13px;color:#a8b6cc;margin-bottom:6px;font-weight:700;">
+      <div style="font-size:13px;color:#d3c0ea;margin-bottom:6px;font-weight:700;">
         余数表（n → r = Aₙ mod m）
       </div>
       <table class="rem" id="remTable"></table>
-      <div style="font-size:12px;color:#7c8aa3;margin-top:8px;line-height:1.6;">
+      <div style="font-size:12px;color:#a895b3;margin-top:8px;line-height:1.6;">
         r 一旦变成 <b style="color:#22c55e">0</b>，就说明这一串 1 被 m 整除了 ——
         那个 n 就是答案。整个过程**只保留余数**，所以永远不用去存那个上千位的巨数。
       </div>
@@ -146,9 +146,9 @@
   </div>
 
   <div class="legend">
-    <span><i style="background:#172033;border-color:#24304a"></i>已经添上的 1</span>
+    <span><i style="background:#21132e;border-color:#2c1b47"></i>已经添上的 1</span>
     <span><i style="background:#f59e0b;border-color:#fbbf24"></i>这一步刚添的 1（位数太多时它落在省略区，看不到）</span>
-    <span><i style="background:#0f1626;border-color:#1c2740"></i>省略的位数</span>
+    <span><i style="background:#150c26;border-color:#241539"></i>省略的位数</span>
     <span><i style="background:#22c55e;border-color:#4ade80"></i>整除（答案）</span>
   </div>
 </div>

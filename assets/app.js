@@ -148,44 +148,70 @@
   }
 
   /* ---------------------------------------------------------------- 视图：首页 */
-  /* 首页刻意做得"轻"：一行导语 + 数字 + 卡片，长解释都收进各自的页面。
-     （上一版首页塞了整段介绍，读起来累 —— 这是本轮改版要治的主要问题。） */
+  /* 首页刻意做得"轻"：一行导语 + 数字 + 卡片，长解释都收进各自的页面。 */
   function vHome() {
     var conSorted = WIKI.concepts.slice().sort(function (a, b) {
       return b.problems.length - a.problems.length || a.name.localeCompare(b.name);
     });
     return '' +
-      '<header class="head">' +
-        '<div class="kicker">算法可视化实验室</div>' +
-        '<h2><span class="n">10</span>道经典算法题</h2>' +
-        '<p class="lead">每题一篇详解、一个可交互动画、一份可复制的去注释源码；' +
-        "题解与概念互相链接，可以顺着读下去。</p>" +
-        '<div class="chips">' +
-          mkChip("题目 " + DATA.length, null, "neutral") +
-          mkChip("分类 " + WIKI.categories.length, "#/idx", "neutral") +
-          mkChip("概念 " + WIKI.concepts.length, "#/idx", "neutral") +
-          mkChip("代码片段 " + WIKI.snippets.length, "#/s", "neutral") +
+      '<header class="head hero">' +
+        "<div>" +
+          '<div class="kicker">算法可视化实验室</div>' +
+          /* 题量**不写死**：这个数字来自数据，题目加了它自己会长 */
+          '<h1 class="hero-title"><span class="num" id="statProblems">' + DATA.length +
+          "</span> 道经典算法题</h1>" +
+          '<p class="lead">每题一篇详解、一个可交互动画、一份可复制的去注释源码；' +
+          "题解与概念互相链接，可以顺着读下去。题量会持续增加。</p>" +
+          '<div class="chips">' +
+            mkChip("分类 " + WIKI.categories.length, "#/idx", "neutral") +
+            mkChip("概念 " + WIKI.concepts.length, "#/idx", "neutral") +
+            mkChip("代码片段 " + WIKI.snippets.length, "#/s", "neutral") +
+          "</div>" +
+        "</div>" +
+        '<div class="graphwrap">' +
+          '<canvas id="heroGraph" role="img" aria-label="题目关系图：节点可点击进入题解"></canvas>' +
+          '<p class="hint">点节点进入题解 · 连线＝共享概念</p>' +
         "</div>" +
       "</header>" +
       '<h3 class="sect">按分类读</h3>' +
       '<div class="grid">' + WIKI.categories.map(function (c) {
-        return '<a class="card" href="#/c/' + c.id + '"><h4>' + esc(c.name) +
+        return '<a class="card reveal" href="#/c/' + c.id + '"><h4>' + esc(c.name) +
           '<span class="cnt">' + c.problems.length + " 题</span></h4><p>" +
           c.desc + '</p><p class="mini">' +
           c.problems.map(function (s) { return esc(pTitle(s)); }).join(" · ") +
           "</p></a>";
       }).join("") + "</div>" +
       '<h3 class="sect">概念速览<span class="hint">按关联题目数排序，点进去看反链</span></h3>' +
-      '<div class="kwlist">' + conSorted.slice(0, 12).map(function (c) {
+      '<div class="kwlist reveal">' + conSorted.slice(0, 12).map(function (c) {
         return '<a class="kwchip" href="#/k/' + c.id + '">' + esc(c.name) +
           '<b>' + c.problems.length + "</b></a>";
       }).join("") + "（共 " + WIKI.concepts.length + ' 条，<a href="#/idx">看全部 →</a>）</div>' +
       '<h3 class="sect">可复用代码片段</h3>' +
       '<div class="grid">' + WIKI.snippets.map(function (s) {
-        return '<a class="card" href="#/s/' + s.id + '"><h4>' + esc(s.name) +
+        return '<a class="card reveal" href="#/s/' + s.id + '"><h4>' + esc(s.name) +
           '<span class="cnt">' + s.problems.length + " 题在用</span></h4><p>" +
           esc(plain(s.desc[0]).slice(0, 84)) + "…</p></a>";
       }).join("") + "</div>";
+  }
+
+  /* 关系图的数据：节点＝全部题目，边＝"相关题目"（去重） */
+  function graphData() {
+    var idx = {}, nodes = [], edges = [], seen = {};
+    DATA.forEach(function (p, i) {
+      nodes.push({ slug: p.slug, title: p.title, catId: p.catId });
+      idx[p.slug] = i;
+    });
+    DATA.forEach(function (p, i) {
+      (p.related || []).forEach(function (s) {
+        var j = idx[s];
+        if (j === undefined) return;
+        var k = (i < j ? i + "-" + j : j + "-" + i);
+        if (seen[k]) return;
+        seen[k] = 1;
+        edges.push([i, j]);
+      });
+    });
+    return { nodes: nodes, edges: edges };
   }
 
   /* 把一列"要点"渲染成：第一条直接可见 + 其余收进折叠块。
@@ -364,16 +390,21 @@
     var h = crumbs([{ text: "首页", href: "#/" },
                     c ? { text: c.name, href: "#/c/" + c.id } : { text: "题目" },
                     { text: p.title }]) +
-      '<header class="head">' +
-        '<div class="kicker">第 ' + pad2(p.no) + " 题 · " + esc(p.dir) + " /</div>" +
-        "<h2><span class=\"n\">" + pad2(p.no) + "</span>" + esc(p.title) + "</h2>" +
-        '<p class="sum">' + esc(p.summary) + "</p>" +
-        '<div class="chips">' +
-          (c ? mkChip(c.name, "#/c/" + c.id) : "") +
-          mkChip(p.cx, null, "neutral") +
-          mkChip("判题格式：" + p.fmt, null, fmtKind) +
-          mkChip("源码 " + p.files.length + " 份", null, "neutral") +
+      '<header class="head pgrid">' +
+        "<div>" +
+          '<div class="kicker">第 ' + pad2(p.no) + " 题 · " + esc(p.dir) + " /</div>" +
+          "<h2><span class=\"n\">" + pad2(p.no) + "</span>" + esc(p.title) + "</h2>" +
+          '<p class="sum">' + esc(p.summary) + "</p>" +
+          '<div class="chips">' +
+            (c ? mkChip(c.name, "#/c/" + c.id) : "") +
+            mkChip(p.cx, null, "neutral") +
+            mkChip("判题格式：" + p.fmt, null, fmtKind) +
+            mkChip("源码 " + p.files.length + " 份", null, "neutral") +
+          "</div>" +
         "</div>" +
+        /* 这题的程序化封面：用 canvas 画它的"结构意象"（三角 / 网格 / 图 / 栈…） */
+        '<canvas class="motif" id="motif" role="img" aria-label="' +
+          esc(p.title) + ' 的结构意象"></canvas>' +
       "</header>";
 
     // 本页涉及的概念（最多露 6 个，其余统一去概念索引 —— 别把一行塞满）
@@ -580,10 +611,13 @@
     }
     viewEl.innerHTML = h;
     renderList(qEl.value);
+    var C = (window.AVL && window.AVL.canvas) || null;      // canvas 层（没载入也不致命）
     if (wasProblem) {
       mountToc();
       mountAnim(r.slug);
       mountSrc(r.slug);
+      var mc = document.getElementById("motif");
+      if (C && mc) C.initMotif(mc, r.slug);
       var rule = viewEl.querySelector(".tab-rule");
       var on = viewEl.querySelector('.tab[aria-selected="true"]');
       if (rule && on) {
@@ -591,15 +625,24 @@
         rule.style.left = on.offsetLeft + "px";
       }
       // 片段页也要挂复制按钮
-    } else if (r.view === "s" && r.id && SNIP[r.id]) {
-      var s = SNIP[r.id];
-      var rows = viewEl.querySelectorAll(".ln");
-      s.code.split("\n").forEach(function (ln, i) {
-        if (rows[i]) rows[i].lastChild.textContent = ln;
-      });
-      var btn = document.getElementById("btnCopy");
-      if (btn) btn.addEventListener("click", function () { copy(s.code, btn); });
+    } else {
+      if (r.view === "home" && C) {
+        var g = document.getElementById("heroGraph");
+        var gd = graphData();
+        if (g) C.initGraph(g, gd.nodes, gd.edges);      // 关系网络图（可点，直接跳题）
+        C.countUp(document.getElementById("statProblems"), DATA.length);
+      }
+      if (r.view === "s" && r.id && SNIP[r.id]) {
+        var s = SNIP[r.id];
+        var rows = viewEl.querySelectorAll(".ln");
+        s.code.split("\n").forEach(function (ln, i) {
+          if (rows[i]) rows[i].lastChild.textContent = ln;
+        });
+        var btn = document.getElementById("btnCopy");
+        if (btn) btn.addEventListener("click", function () { copy(s.code, btn); });
+      }
     }
+    if (C) C.initReveal(viewEl);
     resEl.hidden = true;
     qEl.value = qEl.value;      // 保留搜索串，但收起结果
     viewEl.focus({ preventScroll: true });
