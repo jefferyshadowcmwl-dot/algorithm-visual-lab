@@ -46,7 +46,10 @@
   /* ---------- 两条数组 ---------- */
   .rowwrap { margin: 6px 0 4px; }
   .rowlbl { display:inline-block; width:26px; font-weight:700; color:var(--fg); font-size:15px; }
-  .row { display:inline-flex; gap:8px; flex-wrap:wrap; vertical-align:middle; }
+  /* row-gap 22px（列间距仍是 8px）：给折行时下方那行的箭头留出垂直空间。
+     ⚠️ 少了它，换行后上一行的箭头会**压在下一行的格子上**（实测窄窗 658px 时
+     箭头被下一行普通格完全盖住 —— 这点由 Chrome 的 elementsFromPoint 实拍确认）。 */
+  .row { display:inline-flex; gap:22px 8px; flex-wrap:wrap; vertical-align:middle; }
   .cell {
     position: relative; min-width:52px; width:auto; padding:0 10px; height:44px; line-height:44px;
     border-radius:8px; text-align:center; font-weight:700; font-size:15px;
@@ -57,12 +60,26 @@
   /* 指针：A 琥珀、B 蓝 —— 两种对比色，谁都没被谁吃掉 */
   .cell.cur    { background:var(--cur); border-color:#d97706; color:#0f0820; transform:scale(1.06); }
   .cell.curB   { background:var(--info); border-color:#0ea5e9; color:#04140a; transform:scale(1.06); }
+  /* 指针格抬到下一行格子之上：箭头是它的 ::after，若被后一行盖住就看不见了
+     （z-index 与 row-gap 是**双保险** —— 行距已让箭头不压人，这条保证极端窄窗下仍可见）。 */
+  .cell.cur, .cell.curB { z-index:5; }
   /* 当前最优配对：绿色内描边，**不抢底色**，可与 cur/curB/dim 叠加 */
   .cell.ring   { box-shadow: inset 0 0 0 3px var(--ok); }
   /* 差为 0（收工）：整格变绿（写在 .cur 之后，靠更高的特异度压过指针底色） */
   .cell.hit, .cell.cur.hit, .cell.curB.hit { background:var(--ok); border-color:#16a34a; color:#04140a; }
-  .ptr { display:inline-block; width:26px; text-align:center; font-weight:700; }
-  .ptrA { color:var(--cur); } .ptrB { color:var(--info); }
+  /* 指针箭头 i▲/j▲：做成**指针格子自己的 ::after**（.cell 本来就是 position:relative），
+     对齐由盒模型天然保证 —— 任何索引、任何窗口宽度都对得上。
+     ⚠️ 早先它是一条独立的行，每个槽写死 26px，而格子每槽 >= 52+20+4+8 = 84px：
+     索引一大就累积漂移，箭头会落到别的格子下面（Chrome 实拍量到：格子中心
+     141 / 250 / 360，箭头中心 103 / 137 / 171 —— 箭头 2 已经跑到格子 0 下面了）。
+     做成 ::after 后这类漂移**结构上不可能再发生**，不必再用 JS 逐格同步宽度。 */
+  .cell.cur::after, .cell.curB::after {
+    position:absolute; left:50%; bottom:-19px; transform:translateX(-50%);
+    font-size:13px; line-height:1; font-weight:700; white-space:nowrap;
+  }
+  .cell.cur::after  { content:"i▲"; color:var(--cur); }
+  .cell.curB::after { content:"j▲"; color:var(--info); }
+  /* 箭头行只剩"占位"，撑出箭头所需的高度；内容由 ::after 画 */
   .ptrow { height:20px; }
 
   /* ---------- 状态条 ---------- */
@@ -111,11 +128,11 @@
 
   <div class="rowwrap">
     <div id="rowA"></div>
-    <div class="ptrow" id="ptrA"></div>
+    <div class="ptrow"></div>
   </div>
   <div class="rowwrap">
     <div id="rowB"></div>
-    <div class="ptrow" id="ptrB"></div>
+    <div class="ptrow"></div>
   </div>
 
   <div class="statusbar">
@@ -231,8 +248,8 @@ function stateAt(k) {
 function render() {
   var st = stateAt(stepIdx);
 
-  drawRow("rowA", "ptrA", A0, A, st, "A");
-  drawRow("rowB", "ptrB", B0, B, st, "B");
+  drawRow("rowA", A0, A, st, "A");
+  drawRow("rowB", B0, B, st, "B");
 
   document.getElementById("stepCounter").textContent =
     "步骤 " + Math.min(stepIdx + 1, steps.length) + " / " + steps.length;
@@ -242,9 +259,8 @@ function render() {
   updateExplain();
 }
 
-function drawRow(rowId, ptrId, orig, sorted, st, which) {
+function drawRow(rowId, orig, sorted, st, which) {
   var box = document.getElementById(rowId);
-  var ptr = document.getElementById(ptrId);
   var arr = st.sorted ? sorted : orig;
 
   /* 复用判据：显式比较"格子数 + 排序是否已揭示"两个维度。
@@ -306,19 +322,10 @@ function drawRow(rowId, ptrId, orig, sorted, st, which) {
     cell.className = "cell" + (cls ? " " + cls : "");
   }
 
-  /* 指针箭头行（元素少，直接整行重写即可；颜色不依赖 transition）*/
-  var parts = [];
-  var pos2 = (which === "A" ? st.pi : st.pj);
-  if (st.sorted && pos2 < arr.length) {
-    for (var q = 0; q < arr.length; q++) {
-      parts.push(q === pos2 ? (which === "A" ? "i▲" : "j▲") : "&nbsp;");
-    }
-  }
-  ptr.innerHTML = '<span class="rowlbl"></span><span class="row">'
-    + parts.map(function (x) {
-        return '<span class="ptr ' + (which === "A" ? "ptrA" : "ptrB") + '">' + x + '</span>';
-      }).join("")
-    + "</span>";
+  /* 指针箭头**不在这里画**：改由 CSS 的 .cell.cur::after / .cell.curB::after 承担，
+     跟着格子走，对齐由盒模型保证（详见样式表里那段说明）。
+     早先是"每个格子对应一个定宽 26px 的槽"独立成行 —— 槽宽与格子宽不一致，
+     索引一大就累积漂移，箭头会落到别的格子下面（Chrome 实拍抓到过）。 */
 }
 
 /* ============ 解说 ============ */
@@ -345,7 +352,12 @@ function updateExplain() {
       "两个指针从最小的那一端出发：" + k("i = 1") + "（A 的第一个）、" + k("j = 1") + "（B 的第一个）。";
   } else if (cur.type === "cmp") {
     var av = A[cur.i], bv = B[cur.j];
-    var small = cur.d < 0 ? "B" : "A";
+    /* 哪一方"偏小"、下一步推谁的指针。
+       ⚠️ 方向别写反：d = A[i] − B[j]，所以 d < 0 时**偏小的是 A**，被推掉的是 i（见 runTwoPointer）。
+       这里原先写成 `cur.d < 0 ? "B" : "A"`，把方向说反了 ——
+       而且在任何 d≠0 的比较步上恒为实际推进方的反面（样例2 三步全反）。
+       断言见 verify_min_diff_animation.js 的「5e：正文里的偏小方/推的指针必须与真实推进方向一致」。 */
+    var small = cur.d < 0 ? "A" : "B";
     /* 比较的序号 = 到目前为止出现过多少个 cmp 步。
        ⚠️ 不能直接用 stepIdx —— 它还把 intro、sort 两步算在内，会整整差 2。 */
     var cmpNo = 0;

@@ -7,7 +7,10 @@ window.AVL_WIKI = {
    "desc": "每一步都做当前最优的选择，并证明它不会后悔。",
    "problems": [
     "cross-river",
-    "cards"
+    "cards",
+    "merge-fruit",
+    "interval-cover",
+    "horse-race"
    ]
   },
   {
@@ -50,7 +53,8 @@ window.AVL_WIKI = {
    "name": "组合数学",
    "desc": "数方案数：卡特兰数、递推、以及「小规模预处理 + 查询 O(1)」。",
    "problems": [
-    "catalan"
+    "catalan",
+    "tickets"
    ]
   }
  ],
@@ -69,7 +73,11 @@ window.AVL_WIKI = {
     "knapsack",
     "components",
     "min-diff",
-    "catalan"
+    "catalan",
+    "merge-fruit",
+    "interval-cover",
+    "horse-race",
+    "tickets"
    ],
    "see": []
   },
@@ -143,7 +151,11 @@ window.AVL_WIKI = {
     "repunit",
     "mod11",
     "catalan",
-    "cross-river"
+    "cross-river",
+    "merge-fruit",
+    "interval-cover",
+    "horse-race",
+    "tickets"
    ],
    "see": [
     "eof",
@@ -186,7 +198,11 @@ window.AVL_WIKI = {
     "repunit",
     "mod11",
     "catalan",
-    "cross-river"
+    "cross-river",
+    "merge-fruit",
+    "interval-cover",
+    "horse-race",
+    "tickets"
    ],
    "see": [
     "reader",
@@ -204,7 +220,8 @@ window.AVL_WIKI = {
    ],
    "problems": [
     "repunit",
-    "mod11"
+    "mod11",
+    "tickets"
    ],
    "see": [
     "mod-9m",
@@ -277,6 +294,24 @@ window.AVL_WIKI = {
    ]
   },
   {
+   "id": "priority-queue",
+   "name": "小根堆 / 优先队列",
+   "def": "每次都能 O(log n) 取出最小值的数据结构，把「反复取最小」从 O(n²) 压到 O(n log n)。",
+   "body": [
+    "合并果子每轮都要取当前<strong>最小的两堆</strong>：朴素做法每轮扫一遍是 O(n²)，换成小根堆就是 O(n log n)。",
+    "堆不是排序数组 —— 用一个数组存完全二叉树，只保证「父 ≤ 子」。建堆可以一次线性做完：从最后一个非叶结点往前逐个下沉。",
+    "⚠️ <strong>升序数组本身满足堆序</strong>，所以「建堆那一步坏掉」这个错在排序过的测试数据上完全暴露不出来 —— 必须用乱序数据测，或者直接对拍堆结构本身（本仓库的合并果子就是被变异测试 D4 逼出这条的）。",
+    "贪心为什么对（交换论证）：总耗费 = Σ(每堆重量 × 它在哈夫曼树里的深度)。若最优树里最深的两个叶子不是最小的两堆，把它们对调只会更优 —— 矛盾。"
+   ],
+   "problems": [
+    "merge-fruit"
+   ],
+   "see": [
+    "reader",
+    "mutation-testing"
+   ]
+  },
+  {
    "id": "self-loop",
    "name": "自环与重边不减分支数",
    "def": "并查集里，只有两端点<strong>本来不同支</strong>的边才会让分支数减 1。",
@@ -309,7 +344,11 @@ window.AVL_WIKI = {
     "repunit",
     "mod11",
     "catalan",
-    "cross-river"
+    "cross-river",
+    "merge-fruit",
+    "interval-cover",
+    "horse-race",
+    "tickets"
    ],
    "see": [
     "tail-newline"
@@ -410,12 +449,65 @@ window.AVL_WIKI = {
    "def": "写完让<strong>另一个 agent 去证伪</strong>，而不是自己再审一遍 —— 自己审自己会漏。",
    "body": [
     "给审计方的要求要写死：只读、可以跑代码造变异体、「没有真问题就明说没有」、禁止「应该没问题」这类措辞。",
-    "实测战果：某次审计抓出 10 个问题（含 1 个真 bug + 2 个潜伏 bug），作者自审两轮都没发现；另一轮抓出 1 个高严重度缺陷（读取器 O(k²)，28.8 秒 vs 0.147 秒）。"
+    "实测战果：某次审计抓出 10 个问题（含 1 个真 bug + 2 个潜伏 bug），作者自审两轮都没发现；另一轮抓出 1 个高严重度缺陷（读取器 O(k²），28.8 秒 vs 0.147 秒）。"
    ],
    "problems": [
     "components",
     "min-diff",
     "repunit"
+   ],
+   "see": [
+    "mutation-testing"
+   ]
+  },
+  {
+   "id": "swap-match",
+   "name": "错位匹配 · 主动输一场",
+   "def": "两侧各有 n 个元素配对出赛，目标不是「每场都赢」而是「总收益最大」，必要时主动输掉一场。",
+   "body": [
+    "田忌赛马：双方各 n 匹马，目标 <code>100 × (胜 − 负)</code>，赢 3 输 1 比赢 1 输 0 更划算。",
+    "<strong>下驷对上驷</strong>：自己最快的都比不过对方最快时，牺牲一匹最慢的去消耗对方王牌，把好马留给后面的场次。",
+    "<strong>四指针贪心</strong>：<code>a_lo/a_hi</code> 与 <code>b_lo/b_hi</code> 圈住未出场的马，每轮按四个分支决定谁上场，每轮双方各少一匹 → 正好 n 轮 O(1)。",
+    "<strong>交换论证</strong>：任取最优解，若它没照这一支配，就把两匹马的对手对调，证明对调不会变差 ——单调性 <code>s(x,·)</code> 随对手变慢不减、<code>s(·,y)</code> 随自己变快不减。",
+    "锚定用例：<code>1 2 3 vs 1 2 3 → 100</code>（同等级也要错位）、<code>2 2 2 vs 2 2 2 → 0</code>（平局支不是输）。"
+   ],
+   "problems": [
+    "horse-race"
+   ],
+   "see": [
+    "mutation-testing"
+   ]
+  },
+  {
+   "id": "composite-mod",
+   "name": "模数是合数时除法不能换逆元",
+   "def": "100007 这类合数模数下，<code>C(2n,n)/(n+1)</code> 那个除法必须用精确整数做完，<strong>不能</strong>换成乘逆元取模。",
+   "body": [
+    "<code>pow(n+1, -1, MOD)</code> 只在 <code>gcd(n+1, MOD) = 1</code> 时存在；否则直接抛 ValueError，或悄悄算出错值。",
+    "足球赛票 <code>MOD = 100007 = 97 × 1031</code> 是合数，<code>n+1 = 97</code> 与它不互素的 n 有 10 个：{96, 193, 290, 387, 484, 581, 678, 775, 872, 969} —— 试到 n=96 就崩。",
+    "<strong>正解</strong>：<code>Cat(k) = Cat(k-1) × (4k−2) // (k+1)</code> 全程精确整数，最后一步才取模。Cat(1000) 只有 598 位，远低于 4300 位 <code>int↔str</code> 限制，撑得住。",
+    "<strong>「同族题不等于同题」</strong>：车厢调度也是卡特兰数，但 n≤18 且不取模，照抄写法过来就是错的。"
+   ],
+   "problems": [
+    "tickets"
+   ],
+   "see": [
+    "no-bigint",
+    "small-preprocess"
+   ]
+  },
+  {
+   "id": "sample-mismatch",
+   "name": "题面正文与样例输出矛盾",
+   "def": "题面说一种口径，样例输出是另一种口径 —— 先算两套、用样例反推、再做开关让两种都能切。",
+   "body": [
+    "单位区间覆盖：正文写「单位区间 [x, x+1]」，输出段却写「覆盖这 n 个<strong>点</strong>」，按正文算样例得 6，按「点」口径算样例得 3 —— 而样例输出就是 3。",
+    "<strong>判题格式从实证反推，绝不从题面猜</strong>（铁律 2）。",
+    "两个口径只差两处 ±1 → 做<strong>显式开关</strong>（<code>MODEL = 'point'</code> / <code>'interval'</code>），默认按 OJ 实测口径，并把「题面矛盾」写到文档显式说明。",
+    "<strong>改默认之后所有派生计算都要跟着切</strong>（陷阱 40）：详细版的方案长度、验证脚本的对拍期望、变异测试的两条分支都必须同步；只切一处必然在某条链上露馅。"
+   ],
+   "problems": [
+    "interval-cover"
    ],
    "see": [
     "mutation-testing"
@@ -442,7 +534,10 @@ window.AVL_WIKI = {
     "repunit",
     "mod11",
     "catalan",
-    "cross-river"
+    "cross-river",
+    "interval-cover",
+    "horse-race",
+    "tickets"
    ]
   },
   {
@@ -459,7 +554,10 @@ window.AVL_WIKI = {
     "knapsack",
     "components",
     "min-diff",
-    "catalan"
+    "catalan",
+    "interval-cover",
+    "horse-race",
+    "tickets"
    ]
   },
   {

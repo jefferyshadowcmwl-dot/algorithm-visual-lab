@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>田忌赛马 · 四指针贪心 动画精讲</title>
+<style>
+  :root {
+    --bg: #0f0820; --bg-2: #130a24;
+    --surface: #1a0f2e; --surface-2: #21132e;
+    --line: #2c1b47; --line-soft: #241539;
+    --fg: #f5e8ff; --fg-dim: #d3c0ea; --fg-mute: #a895b3;
+    --cur: #f59e0b; --cur-soft: rgba(245,158,11,.16); --cur-line: rgba(245,158,11,.42);
+    --ok: #22c55e; --ok-fg: #4ade80; --ok-soft: rgba(34,197,94,.14); --ok-line: rgba(34,197,94,.38);
+    --info: #38bdf8; --info-fg: #7dd3fc; --info-soft: rgba(56,189,248,.16); --info-line: rgba(56,189,248,.45);
+    --danger: #f87171;
+    --ui: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--ui);
+    font-variant-numeric: tabular-nums;
+    background: linear-gradient(180deg, #0f0820 0%, #0b0616 100%);
+    min-height: 100vh; padding: 18px; color: var(--fg);
+  }
+  .container {
+    max-width: 1180px; margin: 0 auto; background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,0.35); padding: 24px;
+  }
+  h1 { text-align: center; color: var(--fg); font-size: 25px; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: var(--fg-dim); font-size: 13.5px; margin-bottom: 18px; }
+
+  .controls { display:flex; gap:9px; justify-content:center; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  button, input, select {
+    padding: 8px 14px; border-radius: 9px; border: 1px solid var(--line);
+    background:var(--surface-2); color:var(--fg); font-size:14px; font-family: inherit;
+    cursor:pointer; transition: all .18s;
+  }
+  button:hover { background:#241539; border-color:#3a2359; color:var(--fg); transform: translateY(-1px); }
+  button.primary { background:var(--ok); color:#04140a; border-color:#16a34a; }
+  button.primary:hover { background:#2ee06a; }
+  input#seqInput { font-family: var(--mono); font-size: 13px; }
+  .error { color:var(--danger); text-align:center; min-height:20px; margin-bottom:8px; font-size:14px; }
+
+  /* ---------- 两排马 ---------- */
+  .rowwrap { margin: 14px 0 4px; }
+  .rowhead { font-size: 13px; color: var(--fg-dim); margin-bottom: 6px; }
+  .rowhead b { color: var(--fg); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; }
+  .cell {
+    position: relative; min-width:56px; padding:10px 12px 16px;
+    border-radius:8px; text-align:center; font-weight:700; font-size:15px;
+    background:var(--surface-2); border:2px solid var(--line); color:var(--fg-dim);
+  }
+  .cell .idx { position:absolute; top:-9px; left:6px; font-size:10px; color:var(--fg-mute); font-weight:400; }
+  .cell .tag { position:absolute; bottom:0; left:0; right:0; font-size:11px; font-weight:700; line-height:15px; }
+  /* 状态类都挂在 .cell 上，特异性为 (0,2,0)，稳稳压过上面那条 .cell (0,1,0)。
+     仓库陷阱 35 的教训：状态选择器特异性不够会被基础规则整条盖掉、静默失效。
+     这里只保留**真的会被 render() 用上**的四个状态 —— 死规则会被
+     verify_horse_race_animation.js 的「CSS 与状态类互查」断言当场揪出来（陷阱 29）。 */
+  .cell.out   { background:var(--bg-2); border-color:var(--line-soft); color:var(--fg-mute); text-decoration:line-through; }
+  .cell.won   { background:var(--ok); border-color:#16a34a; color:#04140a; transform:scale(1.06); }
+  .cell.won .tag, .cell.won .idx { color:#04140a; }
+  .cell.lost  { background:#3b1220; border-color:#7f1d2c; color:#fca5a5; transform:scale(1.06); }
+  .cell.tied  { background:var(--surface-2); border-color:var(--info-line); color:var(--info-fg); transform:scale(1.06); }
+  /* 窗口标记行：慢 / 快 两个端点 */
+  .mkrow { display:flex; gap:8px; flex-wrap:wrap; margin-top:4px; }
+  .mk {
+    min-width:56px; padding:0 12px; text-align:center; font-size:11px; font-weight:700;
+    line-height:16px; color:var(--fg-mute);
+  }
+  .mk.mLo { color:var(--cur); }
+  .mk.mHi { color:var(--info); }
+
+  /* ---------- 状态条 ---------- */
+  .statusbar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;
+               gap:8px; padding:10px 14px; background:var(--surface-2); border:1px solid var(--line-soft);
+               border-radius:9px; margin:16px 0 12px; font-size:14px; color:var(--fg-dim); }
+  .vscore { font-weight:700; font-size:17px; color:#fbbf24; }
+  .vcoin  { font-weight:700; font-size:18px; color:var(--ok-fg); }
+  .vcoin.neg { color:var(--danger); }
+
+  .explain { background:var(--surface-2); border:1px solid var(--line-soft); border-left:5px solid var(--cur); border-radius:9px; padding:15px 18px; min-height:180px; }
+  .explain-title { font-weight:700; color:var(--fg); margin-bottom:8px; font-size:15.5px; }
+  .explain-body { line-height:1.85; font-size:14px; color:var(--fg-dim); }
+  .explain-body b { color:var(--fg); }
+  .explain-body .k { background:rgba(255,255,255,.06); border:1px solid var(--line-soft); padding:1px 6px; border-radius:4px; color:var(--ok-fg); font-family:var(--mono); font-size:12.8px; }
+  .explain-body .hl { color:#fbbf24; font-weight:700; }
+
+  /* ---------- 对局记录 ---------- */
+  .record { margin-top: 16px; }
+  .record h3 { font-size: 14px; color: var(--fg-dim); font-weight: 700; margin-bottom: 8px; }
+  table.rec { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.rec th, table.rec td { border: 1px solid var(--line-soft); padding: 6px 10px; text-align: center; }
+  table.rec th { background: var(--surface-2); color: var(--fg-dim); font-weight: 700; }
+  table.rec td { color: var(--fg-dim); }
+  table.rec tr.now td { background: var(--cur-soft); color: var(--fg); font-weight: 700; }
+  table.rec td.rW { color: var(--ok-fg); font-weight: 700; }
+  table.rec td.rL { color: var(--danger); font-weight: 700; }
+  table.rec td.rT { color: var(--info-fg); font-weight: 700; }
+
+  .legend { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; margin-top:14px; font-size:12.5px; color:var(--fg-dim); }
+  .legend i { display:inline-block; width:13px; height:13px; border-radius:3px; margin-right:5px; vertical-align:-2px; border:1.5px solid; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>田忌赛马 · 四指针贪心 动画精讲</h1>
+  <p class="subtitle">双方各 n 匹马依次对阵，胜 +100 银币、负 -100、平 0 &nbsp;|&nbsp; 目标：<b>让田忌赢到的银币最多</b></p>
+
+  <div class="controls">
+    <button class="primary" onclick="loadSample(1)">题面样例</button>
+    <button onclick="loadSample(2)">同样等级也能赢</button>
+    <button onclick="loadSample(3)">全盘皆输</button>
+    <button onclick="loadSample(4)">王牌换王牌</button>
+    <input id="seqInput" type="text" value="3 5 7 | 4 6 8" style="width:230px;" placeholder="田忌的马 | 齐王的马">
+    <button class="primary" onclick="loadCustom()">载入自定义</button>
+  </div>
+  <div class="controls">
+    <button onclick="prevStep()">◀ 上一步</button>
+    <button class="primary" onclick="togglePlay()" id="btnPlay">▶ 播放</button>
+    <button onclick="nextStep()">下一步 ▶</button>
+    <button onclick="reset()">↻ 重置</button>
+    <select id="playSpeed" onchange="changeSpeed()">
+      <option value="1800">慢速</option>
+      <option value="1000" selected>正常</option>
+      <option value="400">快速</option>
+    </select>
+  </div>
+  <div class="error" id="errorBox"></div>
+
+  <div class="rowwrap">
+    <div class="rowhead">田忌的马（慢 -> 快）：</div>
+    <div class="row" id="rowTian"></div>
+    <div class="mkrow" id="mkTian"></div>
+  </div>
+  <div class="rowwrap">
+    <div class="rowhead">齐王的马（慢 -> 快）：</div>
+    <div class="row" id="rowKing"></div>
+    <div class="mkrow" id="mkKing"></div>
+  </div>
+
+  <div class="statusbar">
+    <span id="stepCounter">步骤 0 / 0</span>
+    <span>战绩：<span class="vscore" id="scoreBox">—</span></span>
+    <span>田忌银币：<span class="vcoin" id="coinBox">—</span></span>
+  </div>
+
+  <div class="explain">
+    <div class="explain-title" id="stepTitle">点上面任一「样例」按钮开始</div>
+    <div class="explain-body" id="stepDetail">
+      田忌知道双方每一匹马的速度，也可以任意安排出场顺序。
+      他的目标是让 <strong>100 x（胜场 - 负场）</strong> 尽可能大。
+      本动画演示的是 <strong>排序 + 四指针贪心</strong> 的 O(n log n) 做法。
+    </div>
+  </div>
+
+  <div class="record">
+    <h3>对局记录（已经打完的场次）</h3>
+    <table class="rec" id="recTable"></table>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--surface-2);border-color:var(--line)"></i>还没出场</span>
+    <span><i style="background:var(--ok);border-color:#16a34a"></i>本场出马 · 赢</span>
+    <span><i style="background:#3b1220;border-color:#7f1d2c"></i>本场出马 · 输</span>
+    <span><i style="background:var(--surface-2);border-color:var(--info-line)"></i>本场出马 · 平</span>
+    <span><i style="background:var(--bg-2);border-color:var(--line-soft)"></i>已出场（划掉）</span>
+    <span><i style="background:var(--cur)"></i>窗口里的「慢」</span>
+    <span><i style="background:var(--info)"></i>窗口里的「快」</span>
+  </div>
+</div>
+
+<script>
+/* ============ 状态 ============ */
+var A0 = [], B0 = [];        // 原始输入顺序
+var A = [], B = [];          // 排序后 —— 算法就在这两行上跑
+var race = null;             // runRace() 的结果
+var steps = [];
+var stepIdx = 0;
+var playing = false, timer = null, duration = 1000;
+
+var SAMPLES = {
+  1: { A: [3, 5, 7],      B: [4, 6, 8] },      // 题面样例 1 -> 100
+  2: { A: [1, 2, 3],      B: [1, 2, 3] },      // 同样等级也能靠错位赢 -> 100
+  3: { A: [1, 2],         B: [3, 4] },         // 全盘皆输 -> -200
+  4: { A: [1, 2, 5],      B: [1, 2, 5] }       // 王牌换王牌（分支 ③b） -> 100
+};
+
+/* ============ 核心：四指针贪心（每一步都记进 log） ============ */
+function runRace(tian0, king0) {
+  var n = tian0.length;
+  var order = function (arr) {
+    var idx = [];
+    for (var i = 0; i < arr.length; i++) idx.push(i);
+    idx.sort(function (x, y) { return (arr[x] - arr[y]) || (x - y); });
+    return idx;
+  };
+  var ya = order(tian0), yb = order(king0);
+  var a = ya.map(function (i) { return tian0[i]; });
+  var b = yb.map(function (i) { return king0[i]; });
+
+  var aLo = 0, aHi = n - 1, bLo = 0, bHi = n - 1;
+  var win = 0, lose = 0;
+  var log = [];
+
+  while (aLo <= aHi) {
+    /* 先把**这一轮开始时**的窗口拍下来：解说讲的正是这个窗口，
+       视觉上的「慢/快」标记也必须停在这里，不能先跳到下一轮去。 */
+    var before = { aLo: aLo, aHi: aHi, bLo: bLo, bHi: bHi };
+    var branch, ai, bi, res;
+
+    if (a[aHi] > b[bHi]) {                       /* 分支 ① */
+      branch = "A"; ai = aHi; bi = bHi; res = 1;
+      aHi--; bHi--;
+    } else if (a[aHi] < b[bHi]) {                /* 分支 ② */
+      branch = "B"; ai = aLo; bi = bHi; res = -1;
+      aLo++; bHi--;
+    } else if (a[aLo] > b[bLo]) {                /* 分支 ③a */
+      branch = "C"; ai = aLo; bi = bLo; res = 1;
+      aLo++; bLo++;
+    } else {                                     /* 分支 ③b */
+      branch = "D"; ai = aLo; bi = bHi;
+      res = (a[aLo] < b[bHi]) ? -1 : 0;
+      aLo++; bHi--;
+    }
+
+    if (res > 0) win++; else if (res < 0) lose++;
+    log.push({ rnd: log.length + 1, branch: branch, a: ai, b: bi, res: res,
+               win: win, lose: lose, coin: (win - lose) * 100, before: before });
+  }
+
+  return { A: a, B: b, tian2sorted: ya, king2sorted: yb, log: log,
+           win: win, lose: lose, score: (win - lose) * 100 };
+}
+
+/* ============ 步骤序列 ============ */
+function buildSteps(race) {
+  var s = [];
+  s.push({ type: "intro" });
+  s.push({ type: "sort" });
+  for (var k = 0; k < race.log.length; k++) {
+    var e = race.log[k];
+    s.push({ type: "round", rnd: e.rnd, branch: e.branch, a: e.a, b: e.b,
+             res: e.res, win: e.win, lose: e.lose, coin: e.coin, before: e.before });
+  }
+  s.push({ type: "finished" });
+  return s;
+}
+
+/* ============ 重放到第 k 步（纯函数，可任意跳转） ============ */
+function stateAt(k) {
+  var n = A.length;
+  var cur = steps[Math.min(k, steps.length - 1)];
+  var sorted = false;
+  var racedA = {}, racedB = {};
+  var win = 0, lose = 0, rndSeen = 0;
+
+  /* 两个边界的取值不一样，别写成同一个：
+     · 「是否已排序」用 `t <= k` —— 走到「排序」这一步时，画面就该已经是排好序的，
+       否则解说讲着"现在排好了"、画面上还是原序（第一版就是这个毛病）。
+     · 「已出场的马 / 累计胜负」用 `t < k`（**不含当前步**）：当前这一步正在打的那一对，
+       此时还没有被标记成「已出场」，窗口显示的也是这一步开始时的样子。
+       写成 `t <= k` 会让画面比解说快一拍（最小差那题踩过同样的坑）。 */
+  for (var t = 0; t <= k && t < steps.length; t++) {
+    if (steps[t].type === "sort") sorted = true;
+  }
+  for (var t2 = 0; t2 < k && t2 < steps.length; t2++) {
+    var st = steps[t2];
+    if (st.type === "round") {
+      racedA[st.a] = { rnd: st.rnd, res: st.res };
+      racedB[st.b] = { rnd: st.rnd, res: st.res };
+      win = st.win; lose = st.lose; rndSeen = st.rnd;
+    }
+  }
+
+  var w;
+  if (cur.type === "round") {
+    /* 本轮显示「本轮开始时」的窗口 —— 解说讲的就是它 */
+    w = cur.before;
+    /* 本轮的比分/银币按**打完之后**显示（更符合直觉，也与解说动词一致） */
+    win = cur.win; lose = cur.lose; rndSeen = cur.rnd;
+  } else if (cur.type === "finished") {
+    w = { aLo: n, aHi: n - 1, bLo: n, bHi: n - 1 };   /* 空窗口 */
+  } else {
+    w = { aLo: 0, aHi: n - 1, bLo: 0, bHi: n - 1 };
+  }
+
+  return { cur: cur, sorted: sorted, racedA: racedA, racedB: racedB,
+           win: win, lose: lose, rndSeen: rndSeen,
+           coin: (win - lose) * 100,
+           aLo: w.aLo, aHi: w.aHi, bLo: w.bLo, bHi: w.bHi };
+}
+
+/* ============ 渲染 ============ */
+function render() {
+  var st = stateAt(stepIdx);
+
+  drawRow("rowTian", "mkTian", A0, A, st, "A");
+  drawRow("rowKing", "mkKing", B0, B, st, "B");
+
+  document.getElementById("stepCounter").textContent =
+    "步骤 " + Math.min(stepIdx + 1, steps.length) + " / " + steps.length;
+  document.getElementById("scoreBox").textContent =
+    (st.cur.type === "round" || st.cur.type === "finished")
+      ? (st.win + " 胜 " + st.lose + " 负") : "—";
+  var coinEl = document.getElementById("coinBox");
+  coinEl.textContent = (st.cur.type === "round" || st.cur.type === "finished")
+    ? String(st.coin) : "—";
+  coinEl.className = "vcoin" + (st.coin < 0 ? " neg" : "");
+
+  drawRecord(st);
+  updateExplain();
+}
+
+function drawRow(rowId, mkId, orig, sortedArr, st, which) {
+  var box = document.getElementById(rowId);
+  var mk = document.getElementById(mkId);
+  var arr = st.sorted ? sortedArr : orig;
+
+  /* 复用判据：显式比较「格子数 + 排序是否已揭示」两个维度。
+     ⚠️ 别拿 box.childNodes.length 去比 arr.length —— childNodes 只含格子本身，
+        但复用判据一旦写松，换长度时就会少建格子（最小差那题定下的做法）。 */
+  var mode = st.sorted ? "s" : "o";
+  if (box._cells === undefined || box._mode !== mode || box._cells.length !== arr.length) {
+    box.innerHTML = "";
+    var cells = [];
+    for (var k = 0; k < arr.length; k++) {
+      var c = document.createElement("span");
+      c.className = "cell";
+      var idx = document.createElement("span");
+      idx.className = "idx";
+      c.appendChild(idx);
+      c.appendChild(document.createTextNode(""));
+      var tag = document.createElement("span");
+      tag.className = "tag";
+      c.appendChild(tag);
+      box.appendChild(c);
+      cells.push(c);
+    }
+    box._cells = cells;
+    box._mode = mode;
+  }
+
+  var raced = (which === "A" ? st.racedA : st.racedB);
+  var lo = (which === "A" ? st.aLo : st.bLo);
+  var hi = (which === "A" ? st.aHi : st.bHi);
+  var pick = -1;
+  if (st.cur.type === "round") pick = (which === "A" ? st.cur.a : st.cur.b);
+
+  var cells2 = box._cells;
+  for (var q = 0; q < cells2.length; q++) {
+    var cell = cells2[q];
+    cell.childNodes[0].textContent = st.sorted ? ("[" + (q + 1) + "]") : ("原" + (q + 1));
+    cell.childNodes[1].nodeValue = String(arr[q]);
+
+    var cls = "";
+    var tagText = "";
+    if (st.sorted) {
+      if (q === pick) {
+        /* 本场出马的这一格：用结果色，最醒目 */
+        if (st.cur.res > 0) cls = "won";
+        else if (st.cur.res < 0) cls = "lost";
+        else cls = "tied";
+        tagText = (st.cur.res > 0 ? "胜" : (st.cur.res < 0 ? "负" : "平")) + " 第" + st.cur.rnd + "场";
+      } else if (raced[q] !== undefined) {
+        cls = "out";
+        var r = raced[q].res;
+        tagText = (r > 0 ? "胜" : (r < 0 ? "负" : "平")) + " 第" + raced[q].rnd + "场";
+      }
+      /* 窗口之外的格子（已出场）由 raced 的 out 表达；
+         窗口之内还没出场的保持默认色。 */
+      if (q < lo || q > hi) {
+        if (cls === "") cls = "out";
+      }
+    }
+    cell.className = "cell" + (cls ? " " + cls : "");
+    cell.childNodes[2].textContent = tagText;
+  }
+
+  /* 窗口标记行：只在「窗口非空」时画 慢 / 快 两个端点 */
+  var parts = [];
+  for (var p = 0; p < arr.length; p++) {
+    var t2 = "";
+    if (st.sorted && lo <= hi && p >= lo && p <= hi) {
+      if (p === lo && lo === hi) t2 = "慢=快";
+      else if (p === lo) t2 = "慢";
+      else if (p === hi) t2 = "快";
+    }
+    parts.push(t2);
+  }
+  mk.innerHTML = "";
+  for (var p2 = 0; p2 < parts.length; p2++) {
+    var span = document.createElement("span");
+    span.className = "mk" + (parts[p2] === "慢" ? " mLo" : (parts[p2] === "快" ? " mHi" : ""));
+    span.textContent = parts[p2];
+    mk.appendChild(span);
+  }
+}
+
+function drawRecord(st) {
+  var t = document.getElementById("recTable");
+  t.innerHTML = "";
+  var head = document.createElement("tr");
+  var hd = ["场次", "田忌出马", "齐王出马", "结果", "累计银币"];
+  for (var i = 0; i < hd.length; i++) {
+    var th = document.createElement("th");
+    th.textContent = hd[i];
+    head.appendChild(th);
+  }
+  t.appendChild(head);
+
+  var shown = st.cur.type === "round" ? st.cur.rnd
+            : (st.cur.type === "finished" ? race.log.length : 0);
+  for (var k = 0; k < shown; k++) {
+    var e = race.log[k];
+    var tr = document.createElement("tr");
+    if (st.cur.type === "round" && e.rnd === st.cur.rnd) tr.className = "now";
+    var vals = [String(e.rnd), String(A[e.a]), String(B[e.b])];
+    for (var c = 0; c < vals.length; c++) {
+      var td = document.createElement("td");
+      td.textContent = vals[c];
+      tr.appendChild(td);
+    }
+    var resTd = document.createElement("td");
+    resTd.textContent = (e.res > 0 ? "胜 +100" : (e.res < 0 ? "负 -100" : "平 0"));
+    resTd.className = (e.res > 0 ? "rW" : (e.res < 0 ? "rL" : "rT"));
+    tr.appendChild(resTd);
+    var coinTd = document.createElement("td");
+    coinTd.textContent = String(e.coin);
+    tr.appendChild(coinTd);
+    t.appendChild(tr);
+  }
+}
+
+/* ============ 解说 ============ */
+function updateExplain() {
+  var st = stateAt(stepIdx);
+  var cur = st.cur;
+  var T = document.getElementById("stepTitle");
+  var D = document.getElementById("stepDetail");
+  var n = A.length;
+  var k = function (s) { return '<span class="k">' + s + '</span>'; };
+
+  if (cur.type === "intro") {
+    T.textContent = "① 题目要什么";
+    D.innerHTML =
+      "双方各有 " + n + " 匹马，一轮一轮地跑，每轮各出一匹。" +
+      "<b>胜方从负方手里拿走 100 银币</b>，平局谁也不用出钱。<br>" +
+      "田忌知道两边每一匹马的速度，还能<b>任意安排出场顺序</b> —— " +
+      "问怎么排，最后数到手的银币最多。<br>" +
+      "注意目标不是「赢的场数最多」，而是 " + k("100 x（胜场 - 负场）") +
+      " 最大：赢 3 场输 1 场（+200）比赢 1 场输 0 场（+100）划算。<br>" +
+      "两行马现在还是<b>原始顺序</b>（角上标着 原1、原2…），下一步先把它们排好序。";
+  } else if (cur.type === "sort") {
+    T.textContent = "② 先各自升序排序";
+    D.innerHTML =
+      "两边的马各自按速度升序排好（角上换成排好后的位次 [1]、[2]…）。<br>" +
+      "接着在每一行上放两个指针，圈出<b>还没出场的马</b>这一段「窗口」：" +
+      k("aLo / aHi") + " 是田忌窗口里最慢 / 最快的，" + k("bLo / bHi") + " 是齐王的。" +
+      "窗口下方会标出「慢」和「快」两个端点。<br>" +
+      "每一步只需要盯着四匹马：<b>两边最快的</b>、<b>田忌最慢的</b>、" +
+      "以及（某些分支里）<b>齐王最慢的</b>。这就是四个分支的全部依据。<br>" +
+      "每打完一场，两边各自的窗口都会缩短一格，所以总共正好 " + n + " 场。";
+  } else if (cur.type === "round") {
+    var av = A[cur.a], bv = B[cur.b];
+    T.textContent = "③ 第 " + cur.rnd + " 场：" + av + " vs " + bv;
+    var aHiV = A[cur.before.aHi], aLoV = A[cur.before.aLo];
+    var bHiV = B[cur.before.bHi], bLoV = B[cur.before.bLo];
+    var head =
+      "窗口：田忌 " + k(aLoV + ".." + aHiV) + "、齐王 " + k(bLoV + ".." + bHiV) + "。<br>";
+    if (cur.branch === "A") {
+      D.innerHTML = head +
+        "两边最快的马：" + k("田忌 " + aHiV + " > 齐王 " + bHiV) + " —— " +
+        "<b>分支 ①：最快对最快，白赚一场。</b><br>" +
+        "田忌这匹连齐王最快的那匹都赢得了，那它赢得到齐王任何一匹；" +
+        "所以让它直接撞上对方的王牌，既拿到 +100，又顺手<b>把对方最强的马用掉</b>。<br>" +
+        "（对调论证：万一最优解里齐王的王牌配的是别的马，把它俩的对手对调，" +
+        "白赚的这 1 分不会比换出去的损失少，所以这么配不会更差。）";
+    } else if (cur.branch === "B") {
+      D.innerHTML = head +
+        "两边最快的马：" + k("田忌 " + aHiV + " < 齐王 " + bHiV) + " —— " +
+        "<b>分支 ②：王牌挡不住，就派最慢的去消耗。</b><br>" +
+        "田忌最快的都输给齐王最快的 —— 齐王这匹王牌<b>无论如何都会赢一场</b>，" +
+        "派谁去都是丢 100。<br>" +
+        "既然「谁去都是输」，那就派<b>最慢的 " + aLoV + "</b> 去，把好马留给别人用。" +
+        "这就是「下驷对上驷」。<br>" +
+        "（对调论证：最优解里王牌配的是某匹马，" +
+        "把它换成最慢的那匹，输掉的分一模一样，而被换下来的好马打得只会更好。）";
+    } else if (cur.branch === "C") {
+      D.innerHTML = head +
+        "两边最快的马：" + k("田忌 " + aHiV + " == 齐王 " + bHiV) + "，一样快。" +
+        "再看两边最慢的：" + k("田忌 " + aLoV + " > 齐王 " + bLoV) + " —— " +
+        "<b>分支 ③a：最慢对最慢，还是白赚一场。</b><br>" +
+        "田忌最慢的那匹都能赢齐王最慢的那匹，那就让它们俩跑：" +
+        "分照拿，而且没拿好马去浪费 —— 把齐王这张「软柿子」用掉了。<br>" +
+        "（若换成田忌最快去捏软柿子，等于把「田忌最快 vs 齐王最快」这场平局" +
+        "拱手让成硬碰硬，得不偿失。）";
+    } else {
+      D.innerHTML = head +
+        "两边最快的马：" + k("田忌 " + aHiV + " == 齐王 " + bHiV) +
+        "，一样快；两边最慢的：" + k("田忌 " + aLoV + " <= 齐王 " + bLoV) +
+        " —— <b>分支 ③b：拿最慢的去换掉对方的王牌。</b><br>" +
+        "注意田忌最快的那匹只是<b>等于</b>齐王最快的 —— 撞上去最多打平，" +
+        "根本挣不到分。既然这张王牌用谁去挡都赚不到，那就<b>拿最不值钱的去挡</b>，" +
+        "把剩下的快马留给后面的场次。<br>" +
+        "本场结果：" + (cur.res < 0
+          ? ("田忌 " + aLoV + " < 齐王 " + bHiV + "，<b>输一场</b>（-100）。")
+          : ("田忌 " + aLoV + " == 齐王 " + bHiV + "，<b>平局</b>（0）" +
+             " —— 只可能发生在「剩下的马全一样快」的时候。"));
+    }
+  } else if (cur.type === "finished") {
+    /* A、B 长度都 >= 1（loadCustom 拦了空输入），所以 race 一定有记录 */
+    T.textContent = "④ 全部 " + race.log.length + " 场结束：田忌得 " + race.score + " 银币";
+    D.innerHTML =
+      "战绩 <b>" + race.win + " 胜 " + race.lose + " 负 " +
+      (race.log.length - race.win - race.lose) + " 平</b>，" +
+      "到手 " + k("100 x (" + race.win + " - " + race.lose + ") = " + race.score) + " 银币。<br><br>" +
+      "<b>为什么四步贪心一定得出最优解？</b><br>" +
+      "每一支都可以用「交换论证」钉死：任取一个最优解，" +
+      "如果它没有照这一支来配，就把两匹马的对手对调一下 —— " +
+      "<b>对调之后总收益不会变差</b>。" +
+      "①「最快对最快」白赚的分补得上换出去的；②「谁去都是输一场」所以派最慢的去不吃亏；" +
+      "③a「最慢对最慢」白赚一场且不用好马；③b「王牌用谁挡都平」所以拿最便宜的换。<br>" +
+      "既然每一支都能把最优解「改造」成照它执行的样子而不变差，" +
+      "把 n 场一路改造下来，就得到贪心的方案，且收益仍是最优。<br><br>" +
+      "<b>复杂度：</b>排序 " + k("O(n log n)") + " + 每场 O(1)（共 n 场）= " +
+      k("O(n log n)") + "；" +
+      "如果去枚举全部出场顺序则是 " + k("n!") + " 种，n = 20 就已经跑不完。";
+  }
+}
+
+/* ============ 控制 ============ */
+function setError(msg) { document.getElementById("errorBox").textContent = msg || ""; }
+
+function loadSample(which) {
+  var s = SAMPLES[which];
+  A0 = s.A.slice(); B0 = s.B.slice();
+  load();
+}
+
+/* 自定义输入：格式「田忌的马 | 齐王的马」，空格/逗号分隔 */
+function loadCustom() {
+  var raw = document.getElementById("seqInput").value.trim();
+  var parts = raw.split("|");
+  if (parts.length !== 2) {
+    setError("格式不对：请写成「田忌的马 | 齐王的马」，中间用一个竖线隔开");
+    return;
+  }
+  var split = function (s) {
+    return s.trim().split(/[\s,]+/).filter(function (t) { return t.length; });
+  };
+  var xs = split(parts[0]), ys = split(parts[1]);
+  if (xs.length === 0 || ys.length === 0) { setError("两边都不能为空"); return; }
+  if (xs.length !== ys.length) {
+    setError("田忌有 " + xs.length + " 匹马，齐王有 " + ys.length + " 匹，两边必须一样多（每一场各出一匹）");
+    return;
+  }
+  if (xs.length > 10) { setError("马太多（" + xs.length + " 匹），为了看得清请控制在 10 匹以内"); return; }
+  var a = [], b = [], bad = null;
+  for (var i = 0; i < xs.length; i++) {
+    if (!/^-?\d+$/.test(xs[i]) || !/^-?\d+$/.test(ys[i])) { bad = i + 1; break; }
+    a.push(parseInt(xs[i], 10));
+    b.push(parseInt(ys[i], 10));
+  }
+  if (bad !== null) { setError("第 " + bad + " 组不是整数"); return; }
+  /* 量级闸门：JS 的 number 精确到 2^53，再大 parseInt 就开始失真，
+     算出来的数就跟题目语义不是一回事了。教学用途限在 ±10^9 足够。 */
+  var LIM = 1e9;
+  for (var q = 0; q < a.length; q++) {
+    if (Math.abs(a[q]) > LIM || Math.abs(b[q]) > LIM) {
+      setError("第 " + (q + 1) + " 组数值超过 ±10^9，动画里只看教学规模的小数据");
+      return;
+    }
+  }
+  A0 = a; B0 = b;
+  load();
+}
+
+function load() {
+  race = runRace(A0, B0);
+  A = race.A;
+  B = race.B;
+  steps = buildSteps(race);
+  stepIdx = 0;
+  stopPlay();
+  setError("");
+  render();
+}
+
+function reset() { if (steps.length) { stepIdx = 0; stopPlay(); render(); } }
+function nextStep() {
+  if (!steps.length) return;
+  if (stepIdx < steps.length - 1) { stepIdx++; render(); } else stopPlay();
+}
+function prevStep() {
+  if (!steps.length) return;
+  if (stepIdx > 0) { stepIdx--; stopPlay(); render(); }
+}
+function togglePlay() {
+  if (!steps.length) return;
+  if (playing) stopPlay();
+  else {
+    if (stepIdx >= steps.length - 1) stepIdx = 0;
+    playing = true;
+    document.getElementById("btnPlay").textContent = "⏸ 暂停";
+    tick();
+  }
+}
+function tick() {
+  if (!playing) return;
+  render();
+  if (stepIdx >= steps.length - 1) { stopPlay(); return; }
+  timer = setTimeout(function () { stepIdx++; tick(); }, duration);
+}
+function stopPlay() {
+  playing = false;
+  if (timer) { clearTimeout(timer); timer = null; }
+  document.getElementById("btnPlay").textContent = "▶ 播放";
+}
+function changeSpeed() { duration = parseInt(document.getElementById("playSpeed").value, 10); }
+
+loadSample(1);
+</script>
+</body>
+</html>

@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>单位区间覆盖 · 贪心剪最大空隙 动画精讲</title>
+<style>
+  :root {
+    --bg: #0f0820; --bg-2: #130a24;
+    --surface: #1a0f2e; --surface-2: #21132e;
+    --line: #2c1b47; --line-soft: #241539;
+    --fg: #f5e8ff; --fg-dim: #d3c0ea; --fg-mute: #a895b3;
+    --cur: #f59e0b; --cur-soft: rgba(245,158,11,.16); --cur-line: rgba(245,158,11,.42);
+    --ok: #22c55e; --ok-fg: #4ade80; --ok-soft: rgba(34,197,94,.14); --ok-line: rgba(34,197,94,.38);
+    --info: #38bdf8; --info-fg: #7dd3fc; --info-soft: rgba(56,189,248,.16); --info-line: rgba(56,189,248,.45);
+    --danger: #f87171;
+    --ui: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "Cascadia Code", Consolas, "Courier New", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--ui);
+    font-variant-numeric: tabular-nums;
+    background: linear-gradient(180deg, #0f0820 0%, #0b0616 100%);
+    min-height: 100vh; padding: 18px; color: var(--fg);
+  }
+  .container {
+    max-width: 1180px; margin: 0 auto; background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,0.35); padding: 24px;
+  }
+  h1 { text-align: center; color: var(--fg); font-size: 25px; margin-bottom: 6px; }
+  .subtitle { text-align: center; color: var(--fg-dim); font-size: 13.5px; margin-bottom: 16px; line-height: 1.7; }
+  .subtitle b { color: var(--fg); }
+  .subtitle code { font-family: var(--mono); color: var(--info-fg); }
+
+  .controls { display:flex; gap:9px; justify-content:center; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  button, input, select, textarea {
+    padding: 8px 14px; border-radius: 9px; border: 1px solid var(--line);
+    background:var(--surface-2); color:var(--fg); font-size:14px; font-family: inherit;
+    cursor:pointer; transition: all .18s;
+  }
+  button:hover { background:#241539; border-color:#3a2359; color:var(--fg); transform: translateY(-1px); }
+  button:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+  button.primary { background:var(--ok); color:#04140a; border-color:#16a34a; }
+  button.primary:hover { background:#2ee06a; }
+  textarea#inp {
+    font-family: var(--mono); font-size: 13px; width: 100%; resize: vertical;
+    min-height: 62px; line-height: 1.6; cursor: text;
+  }
+  .error { color:var(--danger); text-align:center; min-height:20px; margin-bottom:8px; font-size:14px; }
+
+  .panel { background:var(--surface-2); border:1px solid var(--line-soft); border-radius:9px;
+           padding:12px 14px; margin-bottom:12px; }
+  .panel-title { font-size:13px; color:var(--fg-dim); margin-bottom:10px; line-height:1.6; }
+  .panel-title b { color:var(--fg); }
+  .panel-title code { font-family: var(--mono); color: var(--info-fg); }
+
+  svg#stage { display:block; width:100%; height:auto; }
+
+  .row { display:flex; gap:12px; flex-wrap:wrap; }
+  .row > .panel { flex:1 1 320px; }
+
+  table.gaps { width:100%; border-collapse:collapse; font-size:13px; font-family:var(--mono); }
+  table.gaps th, table.gaps td { padding:6px 8px; border-bottom:1px solid var(--line-soft); text-align:center; }
+  table.gaps th { color:var(--fg-mute); font-weight:500; font-size:12px; }
+  table.gaps td.hot { color:var(--cur); font-weight:700; }
+  table.gaps td.cold { color:var(--fg-mute); }
+  table.gaps tr.cutrow td { background: var(--ok-soft); }
+  table.gaps td.idx { color: var(--fg-mute); }
+
+  .kv { font-size:13.5px; line-height:2; font-family:var(--mono); }
+  .kv .k { color:var(--fg-mute); display:inline-block; min-width: 11em; }
+  .kv .v { color:var(--fg); }
+  .kv .v.big { color:var(--ok-fg); font-size:19px; font-weight:700; }
+  .kv .v.warn { color:var(--cur); }
+
+  .legend { display:flex; gap:16px; flex-wrap:wrap; font-size:12.5px; color:var(--fg-mute);
+            justify-content:center; margin-top:4px; }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .swatch { width:14px; height:10px; border-radius:3px; display:inline-block; }
+
+  .modelnote { font-size:12.5px; color:var(--fg-mute); text-align:center; margin-top:6px; line-height:1.7; }
+  .modelnote b { color:var(--cur); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>单位区间覆盖 · 贪心「剪最大的空隙」</h1>
+  <p class="subtitle">
+    数轴上有 <b>n</b> 个单位区间 <code>[x, x+1]</code>，用<b>至多 m 条线段</b>把它们全部盖住，求线段总长度的最小值。<br>
+    第一步先当只有 1 条线段：从最左盖到最右，长度就是两端之差（span，具体算式随口径变化，见右侧「账目」）；<br>
+    每多用一条线段，就相当于在某个相邻空隙处<b>剪一刀</b>，省掉那一段 — 当然要剪最大的几刀。
+  </p>
+
+  <div class="panel">
+    <div class="panel-title"><b>输入</b>（第一行 n m，第二行 n 个整数；与题目格式一致）</div>
+    <textarea id="inp" spellcheck="false">6 3
+1 2 4 5 -2 6</textarea>
+    <div class="controls" style="margin-top:10px;margin-bottom:0;">
+      <select id="modelSel">
+        <option value="point">点口径（OJ 实测，样例得 3）</option>
+        <option value="interval">题面正文字面口径（样例得 6）</option>
+      </select>
+      <button id="btnLoad" class="primary">载入</button>
+      <button id="btnReset">重置</button>
+      <span style="width:14px"></span>
+      <button id="btnPrev">上一步</button>
+      <button id="btnNext">下一步</button>
+      <button id="btnPlay">播放</button>
+    </div>
+    <div class="modelnote" id="modelNote"></div>
+  </div>
+
+  <div class="error" id="err"></div>
+
+  <div class="panel">
+    <div class="panel-title" id="stepTitle"></div>
+    <svg id="stage" viewBox="0 0 1000 240" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div class="legend">
+      <span><i class="swatch" style="background:#38bdf8"></i>单位区间 [x, x+1]</span>
+      <span><i class="swatch" style="background:#f59e0b"></i>空隙 gap（可剪）</span>
+      <span><i class="swatch" style="background:#22c55e"></i>最终线段</span>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="panel">
+      <div class="panel-title"><b>空隙表</b>（相邻两个单位区间之间空出来的长度）</div>
+      <div id="gapWrap"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title"><b>账目</b></div>
+      <div class="kv" id="ledger"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// =====================================================================
+// 纯逻辑层（不碰 DOM，可用 node + DOM stub 直接跑，见同目录的
+// verify_interval_cover_animation.js）
+// =====================================================================
+
+/**
+ * 解析输入文本。格式与题目一致：第一行 n m，随后 n 个整数。
+ * 只演示第一组数据；解析失败抛 Error（消息里用「」引中文，别用 ASCII 双引号 ——
+ * 中文里混入 ASCII 双引号会把整个 <script> 弄成语法错误、页面全黑）。
+ */
+function parseInput(text) {
+  var toks = String(text).split(/\s+/).filter(function (t) { return t.length > 0; });
+  if (toks.length < 2) throw new Error('至少要有两个数：n 和 m');
+  var n = Number(toks[0]), m = Number(toks[1]);
+  if (!isFinite(n) || Math.floor(n) !== n) throw new Error('n 必须是整数，收到「' + toks[0] + '」');
+  if (!isFinite(m) || Math.floor(m) !== m) throw new Error('m 必须是整数，收到「' + toks[1] + '」');
+  if (n < 1 || n > 1000) throw new Error('n 超出范围（1 <= n <= 1000），收到 ' + n);
+  if (m < 1 || m > 20) throw new Error('m 超出范围（1 <= m <= 20），收到 ' + m);
+  if (toks.length - 2 < n) {
+    throw new Error('声明 n = ' + n + '，但后面只有 ' + (toks.length - 2) + ' 个数');
+  }
+  var xs = [];
+  for (var i = 0; i < n; i++) {
+    var v = Number(toks[2 + i]);
+    if (!isFinite(v) || Math.floor(v) !== v) throw new Error('x 必须是整数，收到「' + toks[2 + i] + '」');
+    xs.push(v);
+  }
+  var seen = {}, dup = null;
+  for (var j = 0; j < n; j++) {
+    if (seen[xs[j]]) { dup = xs[j]; break; }
+    seen[xs[j]] = true;
+  }
+  if (dup !== null) throw new Error('题面保证 x 互不相同，但出现了重复值 ' + dup);
+  return { n: n, m: m, xs: xs };
+}
+
+/** 一口气把所有中间量算出来 —— 渲染层只读这个结果，不自己算。 */
+function buildState(xs, m, model) {
+  var sorted = xs.slice().sort(function (a, b) { return a - b; });
+  var n = sorted.length;
+  var isPoint = (model === 'point');
+
+  var gaps = [];
+  for (var i = 0; i < n - 1; i++) {
+    gaps.push(isPoint ? (sorted[i + 1] - sorted[i]) : (sorted[i + 1] - sorted[i] - 1));
+  }
+
+  var span = isPoint ? (sorted[n - 1] - sorted[0]) : (sorted[n - 1] + 1 - sorted[0]);
+
+  // 按空隙从大到小排；同值时按位置先后，保证可复现
+  var order = gaps.map(function (g, i) { return i; }).sort(function (a, b) {
+    if (gaps[b] !== gaps[a]) return gaps[b] - gaps[a];
+    return a - b;
+  });
+
+  var cuts = m - 1;
+  if (cuts > n - 1) cuts = n - 1;
+  if (cuts < 0) cuts = 0;
+  var chosen = order.slice(0, cuts).sort(function (a, b) { return a - b; });
+
+  var bounds = [0];
+  for (var c = 0; c < chosen.length; c++) bounds.push(chosen[c] + 1);
+  bounds.push(n);
+
+  var plan = [], total = 0;
+  for (var t = 0; t < bounds.length - 1; t++) {
+    var l = bounds[t], r = bounds[t + 1] - 1;
+    var left = sorted[l], right = sorted[r] + 1;
+    var len = isPoint ? (sorted[r] - sorted[l]) : (sorted[r] + 1 - sorted[l]);
+    plan.push({ l: l, r: r, left: left, right: right, len: len });
+    total += len;
+  }
+
+  var cutSum = 0;
+  for (var q = 0; q < chosen.length; q++) cutSum += gaps[chosen[q]];
+
+  return {
+    xs: xs.slice(), sorted: sorted, n: n, m: m, model: model,
+    isPoint: isPoint, gaps: gaps, span: span, order: order, chosen: chosen,
+    plan: plan, total: total, cutSum: cutSum, answer: span - cutSum
+  };
+}
+
+/** 步骤总数 = 6（0..5） */
+var TOTAL_STEPS = 6;
+
+var STEP_TEXT = [
+  '第 1 步 / 原始数据：先把要盖住的单位区间摆出来。',
+  '第 2 步 / 排序：按左端点从小到大排好，后面才好看清「哪儿有空隙」。',
+  '第 3 步 / 量空隙：相邻两个单位区间之间真正空出来的长度就是 gap（接壤的为 0）。',
+  '第 4 步 / 挑刀口：空隙从大到小排，挑出最大的 m-1 个 —— 这几刀省得最多。',
+  '第 5 步 / 动手剪：在最左最右之间剪这几刀，序列被切成至多 m 段。',
+  '第 6 步 / 出方案：每一段用一条线段正好盖住，总长度 = span 减掉被剪掉的空隙。'
+];
+
+// =====================================================================
+// 渲染层
+// =====================================================================
+
+var SVG_NS = 'http://www.w3.org/2000/svg';
+
+// ★ SVG 的 presentation attribute（fill / stroke）**不支持 CSS 变量**：
+//   写成 fill="var(--info)" 是无效值，浏览器会整片退回黑色。
+//   所以这里把同一套配色硬编码一遍（改 CSS 时记得同步）。
+var C_INFO = '#38bdf8', C_INFO_FG = '#7dd3fc', C_CUR = '#f59e0b';
+var C_OK = '#22c55e', C_OK_FG = '#4ade80';
+var PALETTE = ['#38bdf8', '#a78bfa', '#f472b6', '#4ade80', '#fbbf24', '#22d3ee'];
+
+var PAD_L = 46, PAD_R = 46, SVG_W = 1000;
+var Y_UNIT = 42, H_UNIT = 30;
+var Y_GAP = 84, H_GAP = 30;
+var Y_AXIS = 132;
+var Y_SEG = 152, H_SEG = 34;
+
+var state = null;
+var stepIdx = 0;
+var playing = null;
+
+function mk(tag, attrs, text) {
+  var el = document.createElementNS(SVG_NS, tag);
+  if (attrs) for (var k in attrs) if (attrs.hasOwnProperty(k)) el.setAttribute(k, attrs[k]);
+  if (text !== undefined && text !== null) el.textContent = String(text);
+  return el;
+}
+
+function clearNode(node) {
+  while (node.firstChild) node.removeChild(node.firstChild);
+  return node;
+}
+
+/** 把坐标 v 映射到 SVG 的 x 像素。域 = [lo-pad, hi+pad]，留白随跨度伸缩。 */
+function makeMapper(st) {
+  var lo = st.sorted[0];
+  var hi = st.sorted[st.n - 1] + 1;
+  var width = hi - lo;
+  var pad = width > 0 ? width * 0.05 : 0.5;
+  var d0 = lo - pad, d1 = hi + pad;
+  if (d1 - d0 <= 0) d1 = d0 + 1;
+  return function (v) {
+    return PAD_L + (v - d0) / (d1 - d0) * (SVG_W - PAD_L - PAD_R);
+  };
+}
+
+/** 把 [a,b] 映射成像素区间，并保证至少 minPx 宽（否则密集点会看不见）。 */
+function span(map, a, b, minPx) {
+  var x0 = map(a), x1 = map(b);
+  var w = x1 - x0;
+  if (w < minPx) { x0 = x0 - (minPx - w) / 2; w = minPx; }
+  return { x: x0, w: w };
+}
+
+function renderStage() {
+  var svg = clearNode(document.getElementById('stage'));
+  if (!state) return;
+  var st = state;
+  var map = makeMapper(st);
+  var s = stepIdx;
+
+  // ---------- 坐标轴 ----------
+  svg.appendChild(mk('line', {
+    x1: PAD_L, y1: Y_AXIS, x2: SVG_W - PAD_R, y2: Y_AXIS,
+    stroke: '#2c1b47', 'stroke-width': 1.5
+  }));
+  var x0px = map(st.sorted[0]), x1px = map(st.sorted[st.n - 1] + 1);
+  svg.appendChild(mk('line', {
+    x1: x0px, y1: Y_AXIS - 5, x2: x0px, y2: Y_AXIS + 5, stroke: '#a895b3', 'stroke-width': 1.5
+  }));
+  svg.appendChild(mk('line', {
+    x1: x1px, y1: Y_AXIS - 5, x2: x1px, y2: Y_AXIS + 5, stroke: '#a895b3', 'stroke-width': 1.5
+  }));
+  svg.appendChild(mk('text', {
+    x: x0px, y: Y_AXIS + 18, fill: '#a895b3', 'font-size': 12,
+    'text-anchor': 'middle', 'font-family': 'monospace'
+  }, String(st.sorted[0])));
+
+  // ---------- 单位区间行 ----------
+  // 剪开之后（step >= 4）给每一段换一种颜色，好看出「分了几段」
+  var groupOf = {};                                            // 点索引 -> 组号
+  if (s >= 4) {
+    for (var t = 0; t < st.plan.length; t++) {
+      for (var i2 = st.plan[t].l; i2 <= st.plan[t].r; i2++) groupOf[i2] = t;
+    }
+  }
+
+  var showLabels = st.n <= 30;
+  for (var i = 0; i < st.n; i++) {
+    var box = span(map, st.sorted[i], st.sorted[i] + 1, 3);
+    var fill = C_INFO, stroke = C_INFO_FG;
+    if (s >= 4) {
+      fill = PALETTE[(groupOf[i] || 0) % PALETTE.length];
+      stroke = fill;
+    }
+    svg.appendChild(mk('rect', {
+      x: box.x, y: Y_UNIT, width: box.w, height: H_UNIT,
+      rx: 3, fill: fill, 'fill-opacity': s >= 1 ? 0.85 : 0.45,
+      stroke: stroke, 'stroke-width': 1
+    }));
+    if (showLabels) {
+      svg.appendChild(mk('text', {
+        x: box.x + box.w / 2, y: Y_UNIT + H_UNIT / 2 + 4,
+        fill: '#0f0820', 'font-size': 11, 'text-anchor': 'middle',
+        'font-family': 'monospace', 'font-weight': 600
+      }, String(st.sorted[i])));
+    }
+  }
+  svg.appendChild(mk('text', {
+    x: PAD_L - 8, y: Y_UNIT + H_UNIT / 2 + 4, fill: '#a895b3', 'font-size': 12,
+    'text-anchor': 'end'
+  }, '区间'));
+
+  // ---------- 空隙行 ----------
+  if (s >= 2 && st.n > 1) {
+    for (var g = 0; g < st.gaps.length; g++) {
+      var isChosen = s >= 4 && st.chosen.indexOf(g) >= 0;
+      var isHot = s >= 3 && st.chosen.indexOf(g) >= 0;
+      var gb = span(map, st.sorted[g] + 1, st.sorted[g + 1], 2);
+      var gfill = isChosen ? C_OK : (isHot ? C_CUR : '#3a2359');
+      var gop = isChosen ? 0.9 : (isHot ? 0.75 : 0.5);
+      svg.appendChild(mk('rect', {
+        x: gb.x, y: Y_GAP, width: gb.w, height: H_GAP,
+        rx: 3, fill: gfill, 'fill-opacity': gop,
+        stroke: isHot ? C_CUR : '#2c1b47', 'stroke-width': 1,
+        'stroke-dasharray': isChosen ? '0' : '4 3'
+      }));
+      // 空隙的数值标签：够宽才写，否则挤成一团
+      if (gb.w >= 16) {
+        svg.appendChild(mk('text', {
+          x: gb.x + gb.w / 2, y: Y_GAP + H_GAP / 2 + 4,
+          fill: isChosen ? '#04140a' : (isHot ? '#0f0820' : '#d3c0ea'),
+          'font-size': 12, 'text-anchor': 'middle', 'font-weight': 700,
+          'font-family': 'monospace'
+        }, String(st.gaps[g])));
+      }
+    }
+    svg.appendChild(mk('text', {
+      x: PAD_L - 8, y: Y_GAP + H_GAP / 2 + 4, fill: '#a895b3', 'font-size': 12,
+      'text-anchor': 'end'
+    }, '空隙'));
+  }
+
+  // ---------- 最终线段 ----------
+  if (s >= 5) {
+    for (var p = 0; p < st.plan.length; p++) {
+      var pg = st.plan[p];
+      var pb = span(map, pg.left, pg.right, 4);
+      svg.appendChild(mk('rect', {
+        x: pb.x, y: Y_SEG, width: pb.w, height: H_SEG,
+        rx: 5, fill: C_OK, 'fill-opacity': 0.28,
+        stroke: C_OK, 'stroke-width': 1.8
+      }));
+      if (pb.w >= 26) {
+        svg.appendChild(mk('text', {
+          x: pb.x + pb.w / 2, y: Y_SEG + H_SEG / 2 + 5,
+          fill: C_OK_FG, 'font-size': 12.5, 'text-anchor': 'middle',
+          'font-family': 'monospace', 'font-weight': 700
+        }, '长 ' + pg.len));
+      }
+    }
+    svg.appendChild(mk('text', {
+      x: PAD_L - 8, y: Y_SEG + H_SEG / 2 + 5, fill: '#a895b3', 'font-size': 12,
+      'text-anchor': 'end'
+    }, '线段'));
+    svg.appendChild(mk('text', {
+      x: SVG_W / 2, y: Y_SEG + H_SEG + 26, fill: C_OK_FG, 'font-size': 15,
+      'text-anchor': 'middle', 'font-weight': 700
+    }, '总长度 = ' + st.answer));
+  }
+}
+
+function renderGapTable() {
+  var wrap = clearNode(document.getElementById('gapWrap'));
+  var st = state;
+  if (!st) return;
+  if (st.n === 1) {
+    wrap.textContent = '只有 1 个单位区间，没有空隙可剪。';
+    return;
+  }
+  var html = '<table class="gaps"><tr><th>位置</th><th>左区间</th><th>右区间</th>'
+           + '<th>gap 值</th><th>状态</th></tr>';
+  for (var g = 0; g < st.gaps.length; g++) {
+    var chosenHere = stepIdx >= 4 && st.chosen.indexOf(g) >= 0;
+    var hot = stepIdx >= 3 && st.chosen.indexOf(g) >= 0;
+    var cls = chosenHere ? 'cutrow' : '';
+    var vcls = chosenHere ? 'hot' : (hot ? 'hot' : 'cold');
+    var status;
+    if (chosenHere) status = '已剪开';
+    else if (hot) status = '候选（要剪）';
+    else if (st.gaps[g] === 0) status = '接壤，剪了不省';
+    else status = '不剪';
+    html += '<tr class="' + cls + '">'
+          + '<td class="idx">' + (g) + ' | ' + (g + 1) + '</td>'
+          + '<td>[<span class="idx">' + st.sorted[g] + '</span>, ' + (st.sorted[g] + 1) + ']</td>'
+          + '<td>[<span class="idx">' + st.sorted[g + 1] + '</span>, ' + (st.sorted[g + 1] + 1) + ']</td>'
+          + '<td class="' + vcls + '">' + st.gaps[g] + '</td>'
+          + '<td class="' + vcls + '">' + status + '</td>'
+          + '</tr>';
+  }
+  html += '</table>';
+  wrap.innerHTML = html;
+}
+
+function renderLedger() {
+  var wrap = clearNode(document.getElementById('ledger'));
+  var st = state;
+  if (!st) return;
+  var lines = [];
+  // 负数要自带括号：直接拼会写成「(6 + 1) − -2」，看着像连减号
+  var hi = st.sorted[st.n - 1], lo = st.sorted[0];
+  var loStr = lo < 0 ? ('(' + lo + ')') : String(lo);
+  lines.push(['口径', st.isPoint ? '点（与样例 3 吻合）' : '单位区间（题面正文）', '']);
+  lines.push(['n / m', st.n + ' / ' + st.m, '']);
+  lines.push(['1 条线段 span', st.isPoint
+      ? (hi + ' − ' + loStr)
+      : ('(' + hi + ' + 1) − ' + loStr), '']);
+  if (stepIdx >= 3) {
+    var picked = st.chosen.map(function (i) { return st.gaps[i]; });
+    lines.push(['能剪的刀数', Math.min(Math.max(st.m - 1, 0), Math.max(st.n - 1, 0)) + ' 刀', '']);
+    lines.push(['剪掉哪些 gap', picked.length ? picked.join('、') : '（不剪）', '']);
+  }
+  if (stepIdx >= 5) {
+    lines.push(['线段条数', st.plan.length + ' 条（<= m）', '']);
+    lines.push(['总长度', st.span + ' − ' + st.cutSum + ' = ' + st.answer, 'big']);
+  }
+  var html = '';
+  for (var i = 0; i < lines.length; i++) {
+    var k = lines[i][0], v = lines[i][1], cls = lines[i][2] || '';
+    html += '<div><span class="k">' + k + '</span><span class="v ' + cls + '">'
+          + v + '</span></div>';
+  }
+  wrap.innerHTML = html;
+}
+
+function render() {
+  if (!state) return;
+  document.getElementById('stepTitle').innerHTML =
+    '第 ' + (stepIdx + 1) + ' / ' + TOTAL_STEPS + ' 步 — ' + STEP_TEXT[stepIdx];
+  renderStage();
+  renderGapTable();
+  renderLedger();
+  document.getElementById('btnPrev').disabled = (stepIdx === 0);
+  document.getElementById('btnNext').disabled = (stepIdx === TOTAL_STEPS - 1);
+  var note = document.getElementById('modelNote');
+  if (state.isPoint) {
+    note.innerHTML = '当前 <b>点口径</b>：线段长度 = 两端坐标之差。'
+      + '题面给的样例 6 3 / 1 2 4 5 -2 6 在这一口径下得 <b>3</b>，正是样例输出。';
+  } else {
+    note.innerHTML = '当前 <b>单位区间口径</b>（题面正文）：线段要从区间的左端盖到右端。'
+      + '同一组样例在这一口径下得 <b>6</b>，与样例输出的 3 对不上 —— 这就是题面与样例的矛盾之处。';
+  }
+}
+
+// =====================================================================
+// 交互
+// =====================================================================
+
+function loadInput() {
+  var errEl = document.getElementById('err');
+  errEl.textContent = '';
+  try {
+    var parsed = parseInput(document.getElementById('inp').value);
+    state = buildState(parsed.xs, parsed.m, document.getElementById('modelSel').value);
+    stepIdx = 0;
+    render();
+  } catch (e) {
+    errEl.textContent = '输入有问题：' + e.message;
+  }
+}
+
+function setStep(k) {
+  if (!state) return;
+  if (k < 0) k = 0;
+  if (k > TOTAL_STEPS - 1) k = TOTAL_STEPS - 1;
+  stepIdx = k;
+  render();
+}
+
+function stopPlay() {
+  if (playing !== null) { clearInterval(playing); playing = null; }
+  document.getElementById('btnPlay').textContent = '播放';
+}
+
+function togglePlay() {
+  if (playing !== null) { stopPlay(); return; }
+  if (stepIdx >= TOTAL_STEPS - 1) stepIdx = 0;
+  document.getElementById('btnPlay').textContent = '暂停';
+  playing = setInterval(function () {
+    if (stepIdx >= TOTAL_STEPS - 1) { stopPlay(); return; }
+    setStep(stepIdx + 1);
+  }, 1100);
+}
+
+function wire() {
+  document.getElementById('btnLoad').onclick = loadInput;
+  document.getElementById('modelSel').onchange = loadInput;
+  document.getElementById('btnNext').onclick = function () { stopPlay(); setStep(stepIdx + 1); };
+  document.getElementById('btnPrev').onclick = function () { stopPlay(); setStep(stepIdx - 1); };
+  document.getElementById('btnPlay').onclick = togglePlay;
+  document.getElementById('btnReset').onclick = function () { stopPlay(); setStep(0); };
+}
+
+if (typeof document !== 'undefined' && document.getElementById && document.getElementById('stage')) {
+  wire();
+  loadInput();
+}
+
+// 供 node + DOM stub 实跑验证（浏览器里 module 不存在，这一行会被跳过）
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    parseInput: parseInput,
+    buildState: buildState,
+    STEP_TEXT: STEP_TEXT,
+    TOTAL_STEPS: TOTAL_STEPS,
+    render: render,
+    loadInput: loadInput,
+    setStep: setStep,
+    _peek: function () { return { state: state, stepIdx: stepIdx }; }
+  };
+}
+</script>
+</body>
+</html>

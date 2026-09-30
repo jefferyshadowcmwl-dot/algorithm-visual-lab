@@ -30,6 +30,10 @@ FILES = [
     ("连通分支数", "components_animation.html"), ("最小差", "min_diff_animation.html"),
     ("n个1", "repunit_animation.html"), ("11的余数", "mod11_animation.html"),
     ("车厢调度", "catalan_animation.html"), ("过河问题", "cross_river_animation.html"),
+    ("合并果子", "merge_fruit_animation.html"),
+    ("单位区间覆盖", "interval_cover_animation.html"),
+    ("田忌赛马", "horse_race_animation.html"),
+    ("足球赛票", "tickets_animation.html"),
 ]
 
 COLOR = re.compile(r"(?P<prop>background(?:-color)?|color|fill|stroke|border(?:-color)?)"

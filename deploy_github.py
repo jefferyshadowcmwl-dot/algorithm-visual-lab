@@ -209,7 +209,7 @@ def main():
     files = list(walk_files(root))
     print("待上传 %d 个文件…" % len(files), flush=True)
     tree, total = [], 0
-    for rel, full in files:
+    for idx, (rel, full) in enumerate(files, 1):
         raw = open(full, "rb").read()
         total += len(raw)
         code, blob = call("POST", "/repos/%s/%s/git/blobs" % (login, repo), token,
@@ -219,6 +219,9 @@ def main():
             print("[!] 上传 %s 失败 HTTP %s：%s" % (rel, code, blob.get("message")), flush=True)
             return 1
         tree.append({"path": rel, "mode": "100644", "type": "blob", "sha": blob["sha"]})
+        # 每 5 个报一次进度：几十个文件的循环里，否则外面完全看不到动静（本轮实测干等过）
+        if idx % 5 == 0 or idx == len(files):
+            print("  已上传 %d/%d 个文件（%.1f KB）" % (idx, len(files), total / 1024.0), flush=True)
     print("  已上传 %.1f KB" % (total / 1024.0), flush=True)
 
     # 4) tree -> commit -> ref（一次性提交，语义与本地那次 commit 一致）

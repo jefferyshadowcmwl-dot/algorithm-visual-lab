@@ -369,7 +369,7 @@ def main():
         if p.get("hasAnim") and (not os.path.isfile(anim) or os.path.getsize(anim) < 3000):
             bad("资源存在", "%s 的 animation.html 缺失或过小" % slug)
         if not p.get("hasAnim"):
-            bad("资源存在", "%s 标记为无动画 —— 但仓库里 10 题都有动画" % slug)
+            bad("资源存在", "%s 标记为无动画 —— 但仓库里每道题都有动画" % slug)
 
         arr = load_sources(slug)
         if not arr:
@@ -411,10 +411,13 @@ def main():
             print("  [%s] %s" % (what, why))
         return 1
 
+    # ⚠️ 动画份数必须**算出来**，不能写死 —— 加第 11 题时这里还印着"10 份"，
+    #    汇总文案与实际检查范围不符，等于让人以为新题的动画没被检查。
+    n_anim = sum(1 for p in data if p.get("hasAnim"))
     print("OK: %d 题 | 源码 %d 份（去注释版全部可解析、无残留注释）| "
-          "index 引用与 id 全部可解析 | 动画 10 份零外部引用 | 文件名干净 | "
+          "index 引用与 id 全部可解析 | 动画 %d 份零外部引用 | 文件名干净 | "
           "wiki：分类 %d / 概念 %d / 片段 %d，交叉引用全通、无悬空链接"
-          % (len(data), n_src, w["cats"], w["cons"], w["snips"]) if w else
+          % (len(data), n_src, n_anim, w["cats"], w["cons"], w["snips"]) if w else
           "OK: %d 题 | 源码 %d 份 | index 引用与 id 可解析 | 动画零外链 | 文件名干净 | wiki 缺失"
           % (len(data), n_src))
     return 0

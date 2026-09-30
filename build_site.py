@@ -55,6 +55,14 @@ PROBLEMS = [
      "80 位的大数求 mod 11 —— 绝不把它转成整数。"),
     ("catalan", "车厢调度", "车厢调度", "组合数学 · Catalan", "O(1) 每组", "多组 · EOF 结束",
      "1..n 依次进站、任意时刻可出站，问出站顺序共有多少种（等价于第 n 个卡特兰数，预处理查表后每组 O(1)）。"),
+    ("merge-fruit", "合并果子", "合并果子", "贪心 + 小根堆", "O(n log n)", "单组 · 兼容 EOF 多组（n=0 哨兵）",
+     "每次合并任意两堆、耗费 = 两堆之和，求最小总耗费（哈夫曼树）。"),
+    ("interval-cover", "单位区间覆盖", "单位区间覆盖", "贪心", "O(n log n)", "多组 · EOF 结束",
+     "n 个单位区间 [x, x+1]，用至多 m 条线段覆盖，求线段总长最小（题面正文与样例输出矛盾，OJ 判「点」口径）。"),
+    ("horse-race", "田忌赛马", "田忌赛马", "贪心", "O(n log n)", "多组 · EOF 结束（兼容 n=0 哨兵）",
+     "双方各 n 匹马配对出赛，胜 +100 / 负 -100 / 平 0，求最多的银币；排序 + 四指针贪心。"),
+    ("tickets", "足球赛票", "足球赛票", "组合数学 · Catalan", "O(n) 预处理 + O(1) 查询", "多组 · EOF 结束",
+     "n 人持 50 元 + n 人持 100 元排队买 50 元票，求「找零永不失败」的排队方式数 % 100007（第 n 个卡特兰数，模数是合数）。"),
 ]
 
 # 每题要展示的源码：标签 → (目录内文件名, 类型)
@@ -69,7 +77,9 @@ MAIN_NAME = {
     "cross-river": "cross_river", "cards": "cards", "triangle": "triangle",
     "lcs": "lcs", "knapsack": "knapsack", "components": "components",
     "min-diff": "min_diff", "repunit": "repunit", "mod11": "mod11",
-    "catalan": "catalan",
+    "catalan": "catalan", "merge-fruit": "merge_fruit",
+    "interval-cover": "interval_cover", "horse-race": "horse_race",
+    "tickets": "tickets",
 }
 
 # 概念关键词：正文里出现这些词，就把它链到对应概念页（每篇文档只链第一次）。
@@ -92,11 +102,15 @@ KEYWORDS = {
     "out-of-range": ["越界", "伪答案"],
     "negative-value": ["负数"],
     "index-independent": ["下标独立", "下标互相独立"],
+    "priority-queue": ["小根堆", "哈夫曼", "heapq"],
     "two-pointers": ["双指针"],
     "loop-bound": ["上界"],
     "small-preprocess": ["预处理", "Cat("],
     "mutation-testing": ["变异测试"],
     "adversarial-audit": ["审计"],
+    "swap-match": ["错位", "下驷对上驷", "牺牲", "四指针"],
+    "composite-mod": ["合数", "逆元"],
+    "sample-mismatch": ["题面", "样例", "口径"],
 }
 
 SPLIT_CODE = re.compile(r"(<pre[\s\S]*?</pre>|<code>[\s\S]*?</code>)", re.I)

@@ -16,7 +16,7 @@ wiki_data.py —— 站点的「知识实体」数据（手写，构建时被 bu
 # ---------------------------------------------------------------- 分类
 CATEGORIES = [
     ("greedy", "贪心", "每一步都做当前最优的选择，并证明它不会后悔。",
-     ["cross-river", "cards"]),
+     ["cross-river", "cards", "merge-fruit", "interval-cover", "horse-race"]),
     ("dp", "动态规划", "把大问题拆成重叠子问题，存表复用；关键是状态定义与转移方向。",
      ["triangle", "lcs", "knapsack"]),
     ("dsu", "并查集", "维护「谁和谁是一伙的」：路径压缩 + 按大小合并。",
@@ -26,7 +26,7 @@ CATEGORIES = [
     ("two-pointers", "排序 + 双指针", "先排序把无序变有序，再用单调性把 O(n²) 降到 O(n)。",
      ["min-diff"]),
     ("combinatorics", "组合数学", "数方案数：卡特兰数、递推、以及「小规模预处理 + 查询 O(1)」。",
-     ["catalan"]),
+     ["catalan", "tickets"]),
 ]
 
 # ---------------------------------------------------------------- 概念
@@ -38,7 +38,8 @@ CONCEPTS = [
       "`while (scanf(...) != EOF)`。",
       "本仓库踩过最贵的一课：题面写「若干组」、而找到的参考代码只读一组，于是误判成单组 → 多组数据只回一个答案 → 必 WA。",
       "配套的读法统一用 `readline()` 逐行读（不用 `read()`：终端里要等到 EOF 才返回，看起来像卡死）。"],
-     ["cards", "knapsack", "components", "min-diff", "catalan"], []),
+     ["cards", "knapsack", "components", "min-diff", "catalan", "merge-fruit",
+      "interval-cover", "horse-race", "tickets"], []),
     ("sentinel", "哨兵结束（N=0）",
      "读到某个特定值（常见是 0）就停，而不是读到文件结尾。",
      ["数字三角形用 `H=0` 结束；均分纸牌的 `N=0` 则是**非法数据**（会被 0 除）。",
@@ -64,7 +65,8 @@ CONCEPTS = [
       "几十万 token 挤在同一行时读取退化成 O(k²)（实测 10 万条边挤一行：28.8 秒 vs 0.147 秒）。",
       "⚠️ 不要用 `sys.stdin.read()`，也不要用 `isatty()` 分流 —— PyCharm 的运行窗口 stdin 不是真 tty，会踩空。"],
      ["cards", "triangle", "lcs", "knapsack", "components", "min-diff", "repunit", "mod11",
-      "catalan", "cross-river"], ["eof", "tail-newline"]),
+      "catalan", "cross-river", "merge-fruit", "interval-cover", "horse-race", "tickets"],
+     ["eof", "tail-newline"]),
     ("batch-output", "攒完一起输出",
      "T 组题读满 T 组、全部算完之后，一次性把答案打出来。",
      ["好处一：终端里输入与输出不再交错，读起来清爽。",
@@ -77,14 +79,15 @@ CONCEPTS = [
       "严格逐字节比对的 OJ 直接判 WA。",
       "错误/提示必须打到 stderr 并带 `[!]` 前缀；stdout 只留答案。"],
      ["cards", "triangle", "lcs", "knapsack", "components", "min-diff", "repunit", "mod11",
-      "catalan", "cross-river"], ["reader", "batch-output"]),
+      "catalan", "cross-river", "merge-fruit", "interval-cover", "horse-race", "tickets"],
+     ["reader", "batch-output"]),
     ("no-bigint", "别把大数真造出来",
      "上千位的数不要真的构造，只留它除以 m 的余数。",
      ['n 个 1 的答案可达 9972 位：造出来又慢又占地方；而 `int("1" * n)` 还会撞上'
       "**Python 3.11+ 的 4300 位 int↔str 转换限制**，直接抛 ValueError。",
       "修法：逐位累乘 `v = v * 10 + 1` 构造（不经过字符串），或者干脆只维护余数。",
       "11 的余数同理：80 位的数在 C 里 `long long` 装不下，只能按字符串逐位处理。"],
-     ["repunit", "mod11"], ["mod-9m", "loop-bound"]),
+     ["repunit", "mod11", "tickets"], ["mod-9m", "loop-bound"]),
     ("mod-9m", "模 9m，不是模 m",
      "把 A_n = 11…1 的整除判据写对，需要同乘 9 把分母消掉。",
      ["`A_n = (10^n − 1) / 9`，所以 `A_n ≡ 0 (mod m)` 等价于 `10^n ≡ 1 (mod 9m)`。",
@@ -110,6 +113,16 @@ CONCEPTS = [
       "锚定：`v=[5], w=[3], c=10` 必须是 **5**；正序会得 15。",
       "顺带记：0 初始化只适用于「容量不超过 c」；若问「恰好装满 c」，必须用 -inf 初始化。"],
      ["knapsack"], ["mutation-testing"]),
+    ("priority-queue", "小根堆 / 优先队列",
+     "每次都能 O(log n) 取出最小值的数据结构，把「反复取最小」从 O(n²) 压到 O(n log n)。",
+     ["合并果子每轮都要取当前**最小的两堆**：朴素做法每轮扫一遍是 O(n²)，换成小根堆就是 O(n log n)。",
+      "堆不是排序数组 —— 用一个数组存完全二叉树，只保证「父 ≤ 子」。建堆可以一次线性做完："
+      "从最后一个非叶结点往前逐个下沉。",
+      "⚠️ **升序数组本身满足堆序**，所以「建堆那一步坏掉」这个错在排序过的测试数据上完全暴露不出来 —— "
+      "必须用乱序数据测，或者直接对拍堆结构本身（本仓库的合并果子就是被变异测试 D4 逼出这条的）。",
+      "贪心为什么对（交换论证）：总耗费 = Σ(每堆重量 × 它在哈夫曼树里的深度)。"
+      "若最优树里最深的两个叶子不是最小的两堆，把它们对调只会更优 —— 矛盾。"],
+     ["merge-fruit"], ["reader", "mutation-testing"]),
     ("self-loop", "自环与重边不减分支数",
      "并查集里，只有两端点**本来不同支**的边才会让分支数减 1。",
      ["自环 `(1,1)`、重边、成环这几种边都是「白扫」的：find 出来同一个根，直接跳过。",
@@ -123,7 +136,8 @@ CONCEPTS = [
       "另外：读到一半 EOF 时，已经算出来的那几组答案该保留就保留（逐组输出的题）——"
       "或者像 n 个 1 那样「攒完一起输出」，此时 stdout 还是干净的。"],
      ["cards", "triangle", "lcs", "knapsack", "components", "min-diff", "repunit", "mod11",
-      "catalan", "cross-river"], ["tail-newline"]),
+      "catalan", "cross-river", "merge-fruit", "interval-cover", "horse-race", "tickets"],
+     ["tail-newline"]),
     ("negative-value", "dp 不能用 0 初始化",
      "数据里可能有负数时，用 0 当初始值会污染答案。",
      ["数字三角形的数字可能是负的：锚定 `1 / -7 / 0` 必须输出 **-7**；若 dp 用 0 初始化会得 0。",
@@ -161,9 +175,42 @@ CONCEPTS = [
      "写完让**另一个 agent 去证伪**，而不是自己再审一遍 —— 自己审自己会漏。",
      ["给审计方的要求要写死：只读、可以跑代码造变异体、「没有真问题就明说没有」、禁止「应该没问题」这类措辞。",
       "实测战果：某次审计抓出 10 个问题（含 1 个真 bug + 2 个潜伏 bug），作者自审两轮都没发现；"
-      "另一轮抓出 1 个高严重度缺陷（读取器 O(k²)，28.8 秒 vs 0.147 秒）。"],
+      "另一轮抓出 1 个高严重度缺陷（读取器 O(k²），28.8 秒 vs 0.147 秒）。"],
      ["components", "min-diff", "repunit"], ["mutation-testing"]),
+    ("swap-match", "错位匹配 · 主动输一场",
+     "两侧各有 n 个元素配对出赛，目标不是「每场都赢」而是「总收益最大」，必要时主动输掉一场。",
+     ["田忌赛马：双方各 n 匹马，目标 `100 × (胜 − 负)`，赢 3 输 1 比赢 1 输 0 更划算。",
+      "**下驷对上驷**：自己最快的都比不过对方最快时，牺牲一匹最慢的去消耗对方王牌，"
+      "把好马留给后面的场次。",
+      "**四指针贪心**：`a_lo/a_hi` 与 `b_lo/b_hi` 圈住未出场的马，每轮按四个分支决定谁上场，"
+      "每轮双方各少一匹 → 正好 n 轮 O(1)。",
+      "**交换论证**：任取最优解，若它没照这一支配，就把两匹马的对手对调，证明对调不会变差 ——"
+      "单调性 `s(x,·)` 随对手变慢不减、`s(·,y)` 随自己变快不减。",
+      "锚定用例：`1 2 3 vs 1 2 3 → 100`（同等级也要错位）、`2 2 2 vs 2 2 2 → 0`（平局支不是输）。"],
+     ["horse-race"], ["mutation-testing"]),
+    ("composite-mod", "模数是合数时除法不能换逆元",
+     "100007 这类合数模数下，`C(2n,n)/(n+1)` 那个除法必须用精确整数做完，**不能**换成乘逆元取模。",
+     ["`pow(n+1, -1, MOD)` 只在 `gcd(n+1, MOD) = 1` 时存在；否则直接抛 ValueError，或悄悄算出错值。",
+      "足球赛票 `MOD = 100007 = 97 × 1031` 是合数，`n+1 = 97` 与它不互素的 n 有 10 个："
+      "{96, 193, 290, 387, 484, 581, 678, 775, 872, 969} —— 试到 n=96 就崩。",
+      "**正解**：`Cat(k) = Cat(k-1) × (4k−2) // (k+1)` 全程精确整数，最后一步才取模。"
+      "Cat(1000) 只有 598 位，远低于 4300 位 `int↔str` 限制，撑得住。",
+      "**「同族题不等于同题」**：车厢调度也是卡特兰数，但 n≤18 且不取模，"
+      "照抄写法过来就是错的。"],
+     ["tickets"], ["no-bigint", "small-preprocess"]),
+    ("sample-mismatch", "题面正文与样例输出矛盾",
+     "题面说一种口径，样例输出是另一种口径 —— 先算两套、用样例反推、再做开关让两种都能切。",
+     ["单位区间覆盖：正文写「单位区间 [x, x+1]」，输出段却写「覆盖这 n 个**点**」，"
+      "按正文算样例得 6，按「点」口径算样例得 3 —— 而样例输出就是 3。",
+      "**判题格式从实证反推，绝不从题面猜**（铁律 2）。",
+      "两个口径只差两处 ±1 → 做**显式开关**（`MODEL = 'point'` / `'interval'`），"
+      "默认按 OJ 实测口径，并把「题面矛盾」写到文档显式说明。",
+      "**改默认之后所有派生计算都要跟着切**（陷阱 40）：详细版的方案长度、"
+      "验证脚本的对拍期望、变异测试的两条分支都必须同步；只切一处必然在某条链上露馅。"],
+     ["interval-cover"], ["mutation-testing"]),
 ]
+# 说明：上面 CONCEPTS 的 problems 里，"全部题目"那种长列表是为了让概念页的反链完整 ——
+# 像 reader / tail-newline / out-of-range 这三条，10 题都适用。
 # 说明：上面 CONCEPTS 的 problems 里，"全部题目"那种长列表是为了让概念页的反链完整 ——
 # 像 reader / tail-newline / out-of-range 这三条，10 题都适用。
 
@@ -191,7 +238,7 @@ SNIPPETS = [
       "",
       "    return nxt, has_buffered"],
      ["cards", "triangle", "lcs", "knapsack", "components", "min-diff", "repunit", "mod11",
-      "catalan", "cross-river"]),
+      "catalan", "cross-river", "interval-cover", "horse-race", "tickets"]),
     ("eof-loop", "EOF 多组主循环骨架", "py",
      ["读到 EOF 自然结束；每组输出一行并立刻 flush。",
       "边界不合法就中止（打 `[!]` 到 stderr），不要 `continue` —— 那会把后面的数字当成下一个 N，"
@@ -208,7 +255,8 @@ SNIPPETS = [
       "    ...                              # 读 n 个数据 -> 求解",
       "    print(ans)                       # 每组一行，行尾带换行",
       "    sys.stdout.flush()"],
-     ["cards", "knapsack", "components", "min-diff", "catalan"]),
+     ["cards", "knapsack", "components", "min-diff", "catalan",
+      "interval-cover", "horse-race", "tickets"]),
     ("batch-output", "攒完一起输出（T 组题）", "py",
      ["读满 T 组、全部算完之后一次性 write，行尾补一个 `\\n`。",
       "好处：中途遇到坏数据 return 时 stdout 一个字节都没写过，不会有半截输出。"],
